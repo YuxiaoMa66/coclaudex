@@ -91,6 +91,7 @@ Wait for the completion notification. Do not poll.
 
 For every finding, write `.colab/confirm/<slice>.r<N>.md` with this line format:
 `F1 [major] VALID|INVALID — reason`
+With two reviewers (heavy, overkill), prefix ids with the reviewer, `a-F1` and `b-F1`, and mark findings both raised as `a-F2=b-F1`, so the Finish report can show how many VALID findings each reviewer added. That number decides whether the second reviewer is worth its cost.
 - A finding whose evidence you cannot reproduce is INVALID. Check the cited line or passage yourself.
 - **Code**: run the verification commands yourself. Never trust the executor's or reviewer's claim that tests pass.
 - **Paper**: open every blocker or major finding's quoted passage. Spot-check the new citations yourself. Any fabricated citation is a VALID blocker.
@@ -105,7 +106,7 @@ Decision:
 
 ## 3. Finish
 
-When every slice is ACCEPTED (or the user has decided on the escalated ones), run the project-level verification. Report per slice: combo, tier, rounds, and final verdict. Also give where the time or rework went: run `python3 $SK/scripts/codex_run.py stats` and include its table. (These rows are the data for recalibrating the tier defaults later.) Do not delete `.colab/`; it is the audit trail.
+When every slice is ACCEPTED (or the user has decided on the escalated ones), run the project-level verification. Report per slice: combo, tier, rounds, and final verdict. For heavy or overkill slices, report VALID findings per reviewer (a only, b only, both). Also give where the time or rework went: run `python3 $SK/scripts/codex_run.py stats` and include its table. (These rows are the data for recalibrating the tier defaults later.) Do not delete `.colab/`; it is the audit trail.
 
 ## Rules
 
