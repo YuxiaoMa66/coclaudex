@@ -26,7 +26,7 @@ Write `.colab/PLAN.md`:
 - **Requirements**, and a project-level definition of done.
 - **Slices**, numbered `01-name`, `02-name`, and so on. Each slice needs: kind (`code` or `paper`), goal, scope (the files it may modify), steps, acceptance (checkable criteria plus verification commands), dependencies, and the Codex skills to use (or none).
 
-Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. Before writing acceptance commands, check how the project itself runs its checks (CI config, CONTRIBUTING, Makefile) and use the same runner and test style. Say it in the handoff's Context, so an executor does not write pytest tests for a project whose CI runs unittest. Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed.
+Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. For a bug that is a pattern (a missing check, an unsafe call), grep every place the pattern occurs before writing the handoff, and put the fix at the shared entry point they all go through. Listing call sites one by one leads to rework round after round. Before writing acceptance commands, check how the project itself runs its checks (CI config, CONTRIBUTING, Makefile) and use the same runner and test style. Say it in the handoff's Context, so an executor does not write pytest tests for a project whose CI runs unittest. Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed.
 
 Show the plan and **wait for the user to approve it** before executing anything.
 
