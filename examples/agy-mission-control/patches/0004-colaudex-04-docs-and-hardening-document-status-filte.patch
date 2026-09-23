@@ -1,0 +1,294 @@
+From af605979a53abc0dd5cc78b35784eb8c92c97621 Mon Sep 17 00:00:00 2001
+From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
+Date: Wed, 23 Sep 2026 18:28:45 +0200
+Subject: [PATCH 4/6] colaudex(04-docs-and-hardening): document status filters
+ and prune; allowlist prunable statuses
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ CHANGELOG.md                                  |  6 ++++++
+ README.md                                     |  7 +++++++
+ README.zh-CN.md                               |  7 +++++++
+ antigravity_mission_control/jobs.py           |  9 ++++++++
+ .../skill_bundle/references/job-lifecycle.md  | 12 +++++++++++
+ docs/REFERENCE.md                             |  7 ++++++-
+ docs/REFERENCE.zh-CN.md                       |  7 ++++++-
+ references/job-lifecycle.md                   | 12 +++++++++++
+ tests/test_prune.py                           | 21 ++++++++++++++++++-
+ 9 files changed, 85 insertions(+), 3 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 9aad8d6..2e9b3fa 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,5 +1,11 @@
+ # Changelog
+ 
++## Unreleased
++
++- New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
++- New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
++- New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
++
+ ## 0.5.0 - 2026-09-22
+ 
+ - Stable release (npm `0.5.0` on `latest`) of the module split and every fix from the v0.4.2 release candidates; rc3 was not published on its own. Runtime routing is unchanged.
+diff --git a/README.md b/README.md
+index b34641c..ed04ec5 100644
+--- a/README.md
++++ b/README.md
+@@ -180,14 +180,21 @@ Add `--background`, then use:
+ 
+ ```bash
+ agy-mc status [job-id]
++agy-mc status --limit 20 --state running --state canceling
+ agy-mc wait <job-id> --timeout 10m
+ agy-mc result <job-id>
+ agy-mc cancel <job-id>
+ agy-mc continue <job-id> --prompt-file /private/follow-up.txt
++agy-mc prune --older-than 7d
++agy-mc prune --older-than 7d --yes
+ ```
+ 
+ Editing jobs use an OS-level non-blocking lock per canonical workspace. `cancel` records `canceling`, waits after TERM, escalates to KILL if required, and reports `canceled` only after process exit is confirmed.
+ 
++Listing all jobs with no `job-id` supports `--limit N` (most recently started N jobs) and `--state` (repeatable, keep only these states).
++
++`prune --older-than DURATION` (`ms`/`s`/`m`/`h`/`d`, e.g. `12h` or `7d`) deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or missing status or `finished_at`. Without `--yes` it is a dry run that reports what it would remove.
++
+ ## Design principles
+ 
+ - Exact models are discovered from the current AGY session; no remembered slug is treated as truth.
+diff --git a/README.zh-CN.md b/README.zh-CN.md
+index d4a5299..90db741 100644
+--- a/README.zh-CN.md
++++ b/README.zh-CN.md
+@@ -180,14 +180,21 @@ agy-mc run \
+ 
+ ```bash
+ agy-mc status [job-id]
++agy-mc status --limit 20 --state running --state canceling
+ agy-mc wait <job-id> --timeout 10m
+ agy-mc result <job-id>
+ agy-mc cancel <job-id>
+ agy-mc continue <job-id> --prompt-file /private/follow-up.txt
++agy-mc prune --older-than 7d
++agy-mc prune --older-than 7d --yes
+ ```
+ 
+ 编辑任务按规范工作区使用操作系统级非阻塞锁。`cancel` 会先写入 `canceling`，发送 TERM 并等待，必要时升级到 KILL；只有确认进程退出后才报告 `canceled`。
+ 
++不带 `job-id` 列出全部任务时支持 `--limit N`（最近启动的 N 个任务）和 `--state`（可重复，只保留指定状态）。
++
++`prune --older-than DURATION`（单位 `ms`/`s`/`m`/`h`/`d`，例如 `12h` 或 `7d`）会删除已结束（`done`、`done_with_warnings`、`error`、`crashed`、`cancel_failed`、`canceled`）且 `finished_at` 早于截止时间的任务。未结束的任务、有存活 pid 的任务，以及状态或 `finished_at` 未知或缺失的任务都会被保留。不加 `--yes` 时是 dry run，只报告会删除什么。
++
+ ## 核心原则
+ 
+ - 每次从当前 AGY 会话发现精确模型，不把历史 slug 当成事实。
+diff --git a/antigravity_mission_control/jobs.py b/antigravity_mission_control/jobs.py
+index 5b7abf4..9823060 100644
+--- a/antigravity_mission_control/jobs.py
++++ b/antigravity_mission_control/jobs.py
+@@ -437,6 +437,10 @@ def cmd_status(args: argparse.Namespace) -> int:
+ 
+ UNFINISHED_STATUSES = {"starting", "running", "canceling"}
+ 
++# Only these statuses are eligible for deletion. Any other status - unknown, missing, or a
++# future addition to JOB_EXIT_CODES that isn't listed here - is kept rather than assumed finished.
++PRUNABLE_STATUSES = {"done", "done_with_warnings", "error", "crashed", "cancel_failed", "canceled"}
++
+ 
+ def _finished_at(job: dict) -> datetime | None:
+     text = job.get("finished_at")
+@@ -454,6 +458,8 @@ def _prune_reason(job: dict, cutoff: datetime) -> str | None:
+     # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
+     if job.get("status") in UNFINISHED_STATUSES or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
+         return "unfinished"
++    if job.get("status") not in PRUNABLE_STATUSES:
++        return "unknown status"
+     finished = _finished_at(job)
+     if finished is None:
+         return "missing or unparseable finished_at"
+@@ -550,6 +556,9 @@ def cmd_prune(args: argparse.Namespace) -> int:
+         if job.get("job_id") != name:
+             skipped.append({"entry": name, "reason": "job_id does not match directory name"})
+             continue
++        if not isinstance(job.get("status"), str):
++            skipped.append({"job_id": name, "reason": "unknown status"})
++            continue
+         try:
+             job = refresh_job(job)
+         except (OSError, RuntimeError) as exc:
+diff --git a/antigravity_mission_control/skill_bundle/references/job-lifecycle.md b/antigravity_mission_control/skill_bundle/references/job-lifecycle.md
+index cca36d1..8458bc9 100644
+--- a/antigravity_mission_control/skill_bundle/references/job-lifecycle.md
++++ b/antigravity_mission_control/skill_bundle/references/job-lifecycle.md
+@@ -41,6 +41,7 @@ Use `status` for a snapshot, `result` to reprint a terminal result, and `cancel`
+ 
+ ```bash
+ agy-mc status [<job-id>]
++agy-mc status --limit 20 --state running --state canceling
+ agy-mc result <job-id>
+ agy-mc cancel <job-id>
+ agy-mc continue <job-id> \
+@@ -48,10 +49,21 @@ agy-mc continue <job-id> \
+   --approval-file /private/follow-up-approval.json
+ ```
+ 
++`status` with no job id lists every job; `--limit N` keeps only the N most recently started, and repeatable `--state` keeps only the named states.
++
+ `continue` reuses only the exact role, model, workspace, mode, and AGY conversation recorded by the selected completed job. A new prompt requires a new bound approval; alternatively call `run --conversation <exact-id> --approval-file <new-manifest>`. Job specs, logs, prompts, and result envelopes live under `${XDG_STATE_HOME:-~/.local/state}/antigravity-mission-control/jobs` by default, not in the target repository. Treat the result envelope as evidence to inspect, not as proof that acceptance criteria passed; the host agent still reads changed files and runs the relevant checks.
+ 
+ Editing runs use an OS-level non-blocking lock keyed by canonical workspace. Background workers inherit the lock descriptor, so simultaneous launchers cannot pass a scan race. `cancel` transitions through `canceling`, waits for TERM, escalates to KILL, and reports `canceled` only after confirmed exit; otherwise it records `cancel_failed`. Launch, cancel, worker completion and status refresh update a job under a short per-job lock, so a cancel cannot be overwritten by a late launcher. If the cancel command itself is interrupted, the next `status` or `wait` resolves `canceling` from the worker's exit: its own result if it wrote one, otherwise `canceled`.
+ 
++## Prune
++
++```bash
++agy-mc prune --older-than 7d
++agy-mc prune --older-than 7d --yes
++```
++
++`--older-than` takes a duration (`ms`, `s`, `m`, `h`, or `d`, e.g. `12h` or `7d`). Prune deletes only jobs whose status is `done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, or `canceled` and whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live `pid` or `launcher_pid`, and jobs with an unknown, missing, or unparseable status or `finished_at`; it never follows symlinks. Without `--yes` it is a dry run that prints a JSON report of what it would remove; with `--yes` it prints what it removed and skipped.
++
+ ## Workspace evidence
+ 
+ Each new run records private `before.json`, `after.json`, `delta.json` and `dispatch.json` outside the project. Background jobs expose `evidence_path`; foreground runs print `amc_evidence` on stderr. A canceled or killed run may have only its before snapshot. Git evidence includes HEAD, staged/unstaged diff hashes and fingerprints of changed paths, including untracked files. It does not store full file contents. Fingerprints are capped at 5000 paths, 8 MiB per file and 64 MiB total; omissions are labelled. Concurrent writers and submodule contents require direct inspection. `acceptance: not_evaluated` remains true even when provider execution succeeds.
+diff --git a/docs/REFERENCE.md b/docs/REFERENCE.md
+index a2b443e..61ebdde 100644
+--- a/docs/REFERENCE.md
++++ b/docs/REFERENCE.md
+@@ -13,9 +13,10 @@
+ | `approve` | Create a signed, expiring run approval |
+ | `select` | Produce proposal candidates for A/B/C rosters |
+ | `run` | Execute one foreground or background worker |
+-| `status`, `wait`, `result` | Observe and collect jobs |
++| `status [job-id] [--limit N] [--state S ...]`, `wait`, `result` | Observe and collect jobs |
+ | `cancel` | Confirmed TERM/KILL cancellation |
+ | `continue` | Continue one exact recorded conversation |
++| `prune --older-than DURATION [--yes]` | Delete finished jobs older than a duration |
+ | `skill` | Install, update, inspect or recoverably uninstall the Skill (`--host auto\|codex\|claude\|all`) |
+ 
+ ## Job states and exit codes
+@@ -29,6 +30,10 @@
+ 
+ Job evidence is stored outside target repositories. Results retain provider output and diagnostics and may contain sensitive project content.
+ 
++`status` with no `job-id` lists all jobs, filtered by `--limit N` (the N most recently started) and `--state` (repeatable; keep only these states).
++
++`prune --older-than DURATION` (a duration like `12h` or `7d`, in `ms`/`s`/`m`/`h`/`d`) deletes only jobs whose status is `done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, or `canceled`, and whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live `pid` or `launcher_pid`, and jobs with an unknown, missing, or unparseable status or `finished_at`. Without `--yes` it is a dry run: it reports what it would remove without deleting anything.
++
+ ## Workspace serialization
+ 
+ Foreground and background `accept-edits` runs acquire a non-blocking OS `flock` keyed by SHA-256 of the canonical workspace. A background launcher transfers the inherited file descriptor to its worker; the lock is released automatically when that worker exits. `plan` jobs do not take the edit lock. AGY does not enforce `plan` mode as read-only: real plan workers have created files. So Mission Control compares the Git snapshots after every `plan` run, and a run that changed the workspace fails with exit 5 and lists the changed paths. Non-Git workspaces have no snapshot and cannot be checked.
+diff --git a/docs/REFERENCE.zh-CN.md b/docs/REFERENCE.zh-CN.md
+index 737f72d..e1f3c3f 100644
+--- a/docs/REFERENCE.zh-CN.md
++++ b/docs/REFERENCE.zh-CN.md
+@@ -13,9 +13,10 @@
+ | `approve` | 创建带签名、会过期的运行批准 |
+ | `select` | 为 A/B/C 阵容生成候选模型 |
+ | `run` | 执行前台或后台 worker |
+-| `status`、`wait`、`result` | 观察并收集任务 |
++| `status [job-id] [--limit N] [--state S ...]`、`wait`、`result` | 观察并收集任务 |
+ | `cancel` | 经确认的 TERM/KILL 取消流程 |
+ | `continue` | 续接一个精确记录的会话 |
++| `prune --older-than DURATION [--yes]` | 删除早于指定时长且已结束的任务 |
+ | `skill` | 安装、更新、检查或可恢复卸载 Skill（`--host auto\|codex\|claude\|all`） |
+ 
+ ## 任务状态与退出码
+@@ -29,6 +30,10 @@
+ 
+ 任务证据存放在目标仓库之外。结果会保留 provider 输出和诊断，可能包含敏感项目内容。
+ 
++不带 `job-id` 的 `status` 会列出所有任务，可用 `--limit N`（保留最近启动的 N 个）和 `--state`（可重复，只保留指定状态）过滤。
++
++`prune --older-than DURATION`（时长如 `12h` 或 `7d`，单位 `ms`/`s`/`m`/`h`/`d`）只删除状态为 `done`、`done_with_warnings`、`error`、`crashed`、`cancel_failed` 或 `canceled`，且 `finished_at` 早于截止时间的任务。未结束的任务、有存活 `pid` 或 `launcher_pid` 的任务，以及状态或 `finished_at` 未知、缺失或无法解析的任务都会被保留。不加 `--yes` 时是 dry run：只报告会删除什么，不会真正删除。
++
+ ## 工作区串行保护
+ 
+ 前台和后台 `accept-edits` 使用规范工作区 SHA-256 对应的非阻塞操作系统 `flock`。后台启动器会把锁文件描述符继承给 worker，worker 退出时自动释放。`plan` 任务不获取编辑锁。AGY 并不强制 `plan` 模式只读：真实的 plan worker 曾创建文件。因此 Mission Control 会在每次 `plan` 运行后对比 Git 快照，改动了工作区的运行会以退出码 5 失败，并列出改动的路径。非 Git 工作区没有快照，无法检查。
+diff --git a/references/job-lifecycle.md b/references/job-lifecycle.md
+index cca36d1..8458bc9 100644
+--- a/references/job-lifecycle.md
++++ b/references/job-lifecycle.md
+@@ -41,6 +41,7 @@ Use `status` for a snapshot, `result` to reprint a terminal result, and `cancel`
+ 
+ ```bash
+ agy-mc status [<job-id>]
++agy-mc status --limit 20 --state running --state canceling
+ agy-mc result <job-id>
+ agy-mc cancel <job-id>
+ agy-mc continue <job-id> \
+@@ -48,10 +49,21 @@ agy-mc continue <job-id> \
+   --approval-file /private/follow-up-approval.json
+ ```
+ 
++`status` with no job id lists every job; `--limit N` keeps only the N most recently started, and repeatable `--state` keeps only the named states.
++
+ `continue` reuses only the exact role, model, workspace, mode, and AGY conversation recorded by the selected completed job. A new prompt requires a new bound approval; alternatively call `run --conversation <exact-id> --approval-file <new-manifest>`. Job specs, logs, prompts, and result envelopes live under `${XDG_STATE_HOME:-~/.local/state}/antigravity-mission-control/jobs` by default, not in the target repository. Treat the result envelope as evidence to inspect, not as proof that acceptance criteria passed; the host agent still reads changed files and runs the relevant checks.
+ 
+ Editing runs use an OS-level non-blocking lock keyed by canonical workspace. Background workers inherit the lock descriptor, so simultaneous launchers cannot pass a scan race. `cancel` transitions through `canceling`, waits for TERM, escalates to KILL, and reports `canceled` only after confirmed exit; otherwise it records `cancel_failed`. Launch, cancel, worker completion and status refresh update a job under a short per-job lock, so a cancel cannot be overwritten by a late launcher. If the cancel command itself is interrupted, the next `status` or `wait` resolves `canceling` from the worker's exit: its own result if it wrote one, otherwise `canceled`.
+ 
++## Prune
++
++```bash
++agy-mc prune --older-than 7d
++agy-mc prune --older-than 7d --yes
++```
++
++`--older-than` takes a duration (`ms`, `s`, `m`, `h`, or `d`, e.g. `12h` or `7d`). Prune deletes only jobs whose status is `done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, or `canceled` and whose `finished_at` is older than the cutoff. It keeps unfinished jobs, jobs with a live `pid` or `launcher_pid`, and jobs with an unknown, missing, or unparseable status or `finished_at`; it never follows symlinks. Without `--yes` it is a dry run that prints a JSON report of what it would remove; with `--yes` it prints what it removed and skipped.
++
+ ## Workspace evidence
+ 
+ Each new run records private `before.json`, `after.json`, `delta.json` and `dispatch.json` outside the project. Background jobs expose `evidence_path`; foreground runs print `amc_evidence` on stderr. A canceled or killed run may have only its before snapshot. Git evidence includes HEAD, staged/unstaged diff hashes and fingerprints of changed paths, including untracked files. It does not store full file contents. Fingerprints are capped at 5000 paths, 8 MiB per file and 64 MiB total; omissions are labelled. Concurrent writers and submodule contents require direct inspection. `acceptance: not_evaluated` remains true even when provider execution succeeds.
+diff --git a/tests/test_prune.py b/tests/test_prune.py
+index 5d27121..407b996 100644
+--- a/tests/test_prune.py
++++ b/tests/test_prune.py
+@@ -36,6 +36,8 @@ class PruneTests(unittest.TestCase):
+         self.add("recent-done", status="done", finished_at=ago(hours=1))
+         self.add("no-finish", status="canceled")
+         self.add("bad-finish", status="done", finished_at="yesterday")
++        self.add("old-queued", status="queued", finished_at=ago(days=10))
++        self.add("old-no-status", finished_at=ago(days=10))
+         # A live pid keeps refresh_job from resolving these as crashed.
+         for status in ("starting", "running", "canceling"):
+             self.add(f"live-{status}", status=status, pid=os.getpid(), finished_at=ago(days=100))
+@@ -82,9 +84,18 @@ class PruneTests(unittest.TestCase):
+         self.assertEqual(sorted(payload["removed"]), ["old-done", "old-error"])
+         self.assertEqual(payload["would_remove"], [])
+         self.assertEqual(self.entries(), sorted([
+-            "recent-done", "no-finish", "bad-finish", "live-starting", "live-running", "live-canceling",
++            "recent-done", "no-finish", "bad-finish", "old-queued", "old-no-status",
++            "live-starting", "live-running", "live-canceling",
+             "mismatch", "no-json", "corrupt", "stray-file", "linked-job"]))
+ 
++    def test_unknown_status_kept(self):
++        payload = self.prune(yes=True)
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["old-queued"], "unknown status")
++        self.assertEqual(reasons["old-no-status"], "unknown status")
++        for name in ("old-queued", "old-no-status"):
++            self.assertTrue((self.root / name).is_dir())
++
+     def test_unfinished_jobs_never_deleted_however_old(self):
+         payload = self.prune(older_than="1ms", yes=True)
+         reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+@@ -140,6 +151,14 @@ class PruneTests(unittest.TestCase):
+             self.assertEqual(reasons[name], "unfinished")
+             self.assertTrue((self.root / name).is_dir())
+ 
++    def test_non_string_status_skipped_without_crashing(self):
++        self.add("list-status", status=["done"], finished_at=ago(days=10))
++        payload = self.prune(yes=True)
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["list-status"], "unknown status")
++        self.assertTrue((self.root / "list-status").is_dir())
++        self.assertIn("old-done", payload["removed"])
++
+     def outside_decoy(self, name):
+         decoy = self.base / f"decoy-{name}"
+         decoy.mkdir()
+-- 
+2.50.1 (Apple Git-155)
+

@@ -102,12 +102,13 @@ python3 <skill dir>/scripts/codex_run.py preflight  # is Codex reachable?
 
 ## A real run
 
-Three slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control), a Python CLI with 64 tests. The full audit trail is in [`examples/agy-mission-control`](examples/agy-mission-control).
+Six slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control), a Python CLI with 64 tests, ending in [a pull request](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2). The full audit trail is in [`examples/agy-mission-control`](examples/agy-mission-control).
 
 - **Too lenient.** A Claude reviewer passed pytest-style tests as a style nit. CI runs `unittest` without pytest, so the 14 new tests would never have run. Confirmation caught it and sent the slice back.
 - **A miss.** A new `prune` command treated `cancel_failed` jobs as finished, although their worker may still be alive. Neither reviewer raised it; the orchestrator did.
 - **Too strict.** In round 2 a Codex reviewer rated symlink races as blockers. Checked against the threat model, they became minor follow-ups, and the reasons are on file.
-- End state: 89 tests pass, 25 of them new, after about 14 minutes of agent time.
+- **Escalations that worked.** Twice a slice hit the two-round limit with a valid finding left. colaudex stopped and asked, and the root cause ended up as one check in a shared function instead of a patch per call site.
+- End state: 103 tests pass, 39 of them new, after about 36 minutes of agent time.
 
 ## Earlier tests
 

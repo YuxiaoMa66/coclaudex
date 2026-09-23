@@ -1,7 +1,7 @@
 From 843b73c696bcea76918740251ef1aca357665311 Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 16:59:16 +0200
-Subject: [PATCH 1/3] colaudex(01-parse-duration): shared parse_duration for
+Subject: [PATCH 1/6] colaudex(01-parse-duration): shared parse_duration for
  wait --timeout
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

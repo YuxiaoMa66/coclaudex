@@ -1,0 +1,22 @@
+{
+  "verdict": "fix",
+  "summary": "Review found two malformed-status gaps. Changed files are within the allowed scope, and no tests were weakened. Compileall passed; unit tests could not run because the read-only sandbox has no writable temporary directory.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "location": "antigravity_mission_control/jobstore.py:148",
+      "evidence": "final = result.get(\"status\", \"error\") if isinstance(result, dict) else None",
+      "problem": "A stale job with result.json set to {} is persisted as error. The handoff requires any result status that is not a known terminal string, including a missing status, to resolve to crashed.",
+      "suggestion": "Use a missing or invalid status value that fails validation, so refresh_job writes crashed."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "location": "antigravity_mission_control/jobs.py:684",
+      "evidence": "if job.get(\"status\") not in {\"starting\", \"running\", \"canceling\"}: ... return JOB_EXIT_CODES.get(job.get(\"status\"), 1)",
+      "problem": "cancel still raises TypeError when job.json has an unhashable status such as [\"done\"]. The CLI does not catch TypeError.",
+      "suggestion": "Guard the status type before set and dictionary lookups, as the status and wait paths do."
+    }
+  ]
+}

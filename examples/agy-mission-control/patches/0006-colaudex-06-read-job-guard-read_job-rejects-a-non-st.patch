@@ -1,0 +1,182 @@
+From 8844b774f51c4a4c8f53169f8f370327cd48d2ef Mon Sep 17 00:00:00 2001
+From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
+Date: Wed, 23 Sep 2026 18:56:43 +0200
+Subject: [PATCH 6/6] colaudex(06-read-job-guard): read_job rejects a
+ non-string status so every command reports it cleanly
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ CHANGELOG.md                            |  2 +-
+ antigravity_mission_control/jobstore.py |  4 +-
+ tests/test_malformed_status.py          | 58 ++++++++++++++++---------
+ tests/test_prune.py                     |  8 ++--
+ 4 files changed, 46 insertions(+), 26 deletions(-)
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 3b7d852..6c1df41 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -5,7 +5,7 @@
+ - New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
+ - New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
+ - New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
+-- Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and prune keeps a job whose own status is malformed as `unknown status`.
++- Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and every command that reads malformed job metadata reports it as an error.
+ 
+ ## 0.5.0 - 2026-09-22
+ 
+diff --git a/antigravity_mission_control/jobstore.py b/antigravity_mission_control/jobstore.py
+index fad1622..21a8f1a 100644
+--- a/antigravity_mission_control/jobstore.py
++++ b/antigravity_mission_control/jobstore.py
+@@ -78,6 +78,8 @@ def read_job(job_id: str) -> dict:
+         raise RuntimeError(f"Job metadata is corrupt: {path}: {exc}") from exc
+     if not isinstance(payload, dict):
+         raise RuntimeError(f"Job metadata must be an object: {path}")
++    if "status" in payload and not isinstance(payload["status"], str):
++        raise RuntimeError(f"Job metadata has an invalid status: {path}")
+     return payload
+ 
+ 
+@@ -168,7 +170,7 @@ def list_jobs() -> list[dict]:
+     jobs = []
+     for path in JOB_ROOT.glob("*/job.json"):
+         try:
+-            jobs.append(refresh_job(json.loads(path.read_text(encoding="utf-8"))))
++            jobs.append(refresh_job(read_job(path.parent.name)))
+         except (OSError, json.JSONDecodeError, KeyError, RuntimeError, TypeError, AttributeError):
+             continue
+     return sorted(jobs, key=lambda job: job.get("started_at", ""))
+diff --git a/tests/test_malformed_status.py b/tests/test_malformed_status.py
+index 8745a37..7220ee8 100644
+--- a/tests/test_malformed_status.py
++++ b/tests/test_malformed_status.py
+@@ -58,6 +58,19 @@ class MalformedStatusTests(unittest.TestCase):
+             status = json.loads(path.read_text()).get("status")
+             self.assertTrue(isinstance(status, str) and status in jobstore.JOB_EXIT_CODES, (path, status))
+ 
++    def cli(self, *argv):
++        env = {**os.environ, "AGY_MC_JOB_ROOT": str(self.root)}
++        return subprocess.run([sys.executable, "-m", "antigravity_mission_control.cli", *argv],
++                              cwd=ROOT, env=env, capture_output=True, text=True)
++
++    def assert_cli_error(self, *argv):
++        proc = self.cli(*argv)
++        self.assertEqual(proc.returncode, 1)
++        self.assertNotIn("Traceback", proc.stderr)
++        payload = json.loads(proc.stderr)
++        self.assertEqual(payload["status"], "ERROR")
++        self.assertIn("Job metadata has an invalid status:", payload["error"])
++
+     # Reproduction 1: stale running job whose result.json carries a list status.
+     def test_status_list_with_bad_result(self):
+         self.stale_bad_result()
+@@ -101,14 +114,10 @@ class MalformedStatusTests(unittest.TestCase):
+         self.assertEqual(payload["status"], "crashed")
+         self.assertEqual(self.job_json("no-status")["status"], "crashed")
+ 
+-    def test_cancel_with_list_status_does_not_crash(self):
++    def test_cancel_with_list_status_reports_error(self):
+         self.add("bad-job", status=["done"], pid=DEAD_PID)
+         before = (self.root / "bad-job" / "job.json").read_text()
+-        with mock.patch.object(jobs, "terminate_process_group") as term:
+-            code, payload = self.run_cmd(jobs.cmd_cancel, job_id="bad-job", grace_seconds=1)
+-        term.assert_not_called()
+-        self.assertEqual(code, 1)
+-        self.assertEqual(payload["status"], ["done"])
++        self.assert_cli_error("cancel", "bad-job")
+         self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
+ 
+     # Reproduction 2: job.json itself holds a list status.
+@@ -118,23 +127,26 @@ class MalformedStatusTests(unittest.TestCase):
+         before = (self.root / "bad-job" / "job.json").read_text()
+         code, payload = self.status()
+         self.assertEqual(code, 0)
+-        self.assertEqual({j["job_id"] for j in payload["jobs"]}, {"bad-job", "old-done"})
+-        code, payload = self.status("bad-job")
+-        self.assertEqual(code, 1)
+-        self.assertEqual(payload["status"], ["done"])
++        self.assertEqual({j["job_id"] for j in payload["jobs"]}, {"old-done"})
++        self.assert_cli_error("status", "bad-job")
+         _, payload = self.prune(yes=False)
+         self.assertEqual(payload["would_remove"], ["old-done"])
+         _, payload = self.prune(yes=True)
+         self.assertEqual(payload["removed"], ["old-done"])
+-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+-        self.assertEqual(reasons["bad-job"], "unknown status")
++        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["bad-job"], f"Job metadata has an invalid status: {self.root / 'bad-job' / 'job.json'}")
+         self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
+ 
+-    def test_wait_with_list_status_does_not_crash(self):
++    def test_wait_with_list_status_reports_error(self):
+         self.add("bad-job", result={"status": "done"}, status=["done"])
+-        code, payload = self.run_cmd(jobs.cmd_wait, job_id="bad-job", timeout="1s", timeout_seconds_override=None)
+-        self.assertEqual(code, 1)
+-        self.assertEqual(payload["status"], "done")
++        self.assert_cli_error("wait", "bad-job")
++
++    def test_continue_with_list_status_reports_error(self):
++        self.add("bad-job", status=["done"])
++        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as prompt:
++            prompt.write("continue")
++            prompt.flush()
++            self.assert_cli_error("continue", "bad-job", "--prompt-file", prompt.name)
+ 
+     def test_prune_reason_rejects_non_string_status(self):
+         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+@@ -149,13 +161,19 @@ class MalformedStatusTests(unittest.TestCase):
+     def test_cli_reproductions(self):
+         self.stale_bad_result()
+         self.add("bad-job", status=["done"], finished_at=OLD)
+-        env = {**os.environ, "AGY_MC_JOB_ROOT": str(self.root)}
+         for argv in (["status"], ["status", "stale-job"], ["status", "bad-job"],
++                     ["wait", "bad-job"], ["cancel", "bad-job"],
++                     ["continue", "bad-job", "--prompt-file", str(self.root / "prompt")],
+                      ["prune", "--older-than", "1d"], ["prune", "--older-than", "1d", "--yes"]):
+-            proc = subprocess.run([sys.executable, "-m", "antigravity_mission_control.cli", *argv],
+-                                  cwd=ROOT, env=env, capture_output=True, text=True)
++            proc = self.cli(*argv)
+             self.assertNotIn("Traceback", proc.stderr, argv)
+-            json.loads(proc.stdout)
++            if argv[0] in {"wait", "cancel", "continue"} or argv == ["status", "bad-job"]:
++                self.assertEqual(proc.returncode, 1, argv)
++                payload = json.loads(proc.stderr)
++                self.assertEqual(payload["status"], "ERROR")
++                self.assertIn("Job metadata has an invalid status:", payload["error"])
++            else:
++                json.loads(proc.stdout)
+         self.assertFalse((self.root / "stale-job").exists())
+         self.assertTrue((self.root / "bad-job").is_dir())
+ 
+diff --git a/tests/test_prune.py b/tests/test_prune.py
+index 407b996..927b52d 100644
+--- a/tests/test_prune.py
++++ b/tests/test_prune.py
+@@ -90,7 +90,7 @@ class PruneTests(unittest.TestCase):
+ 
+     def test_unknown_status_kept(self):
+         payload = self.prune(yes=True)
+-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
+         self.assertEqual(reasons["old-queued"], "unknown status")
+         self.assertEqual(reasons["old-no-status"], "unknown status")
+         for name in ("old-queued", "old-no-status"):
+@@ -151,11 +151,11 @@ class PruneTests(unittest.TestCase):
+             self.assertEqual(reasons[name], "unfinished")
+             self.assertTrue((self.root / name).is_dir())
+ 
+-    def test_non_string_status_skipped_without_crashing(self):
++    def test_non_string_status_skipped_with_metadata_error(self):
+         self.add("list-status", status=["done"], finished_at=ago(days=10))
+         payload = self.prune(yes=True)
+-        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
+-        self.assertEqual(reasons["list-status"], "unknown status")
++        reasons = {s.get("job_id", s.get("entry")): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["list-status"], f"Job metadata has an invalid status: {self.root / 'list-status' / 'job.json'}")
+         self.assertTrue((self.root / "list-status").is_dir())
+         self.assertIn("old-done", payload["removed"])
+ 
+-- 
+2.50.1 (Apple Git-155)
+

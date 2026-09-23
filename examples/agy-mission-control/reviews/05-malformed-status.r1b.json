@@ -1,0 +1,30 @@
+{
+  "verdict": "fix",
+  "summary": "The changed files are within scope, and compileall passed. The tests could not run: this read-only sandbox has no writable temporary directory. Static review found two malformed-result cases that still need fixes.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "location": "antigravity_mission_control/jobstore.py:148",
+      "evidence": "final = result.get(\"status\", \"error\") if isinstance(result, dict) else None",
+      "problem": "A result.json object with no status resolves to error and is written to job.json. The handoff permits only an actual known terminal status; other results must resolve to crashed.",
+      "suggestion": "Use result.get(\"status\") without an error default, so the existing validation resolves a missing status to crashed. Add a test for {}."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "location": "antigravity_mission_control/jobs.py:622",
+      "evidence": "The malformed-status branch calls job_result(args.job_id). An in-memory reproduction with job.json status [\"done\"] and no result raised RuntimeError: Job bad-job has no result yet. job_result also rejects a non-object result at jobstore.py:394.",
+      "problem": "wait still fails to return a job result when the job status is malformed and the result is absent, or when refresh marks a non-object result as crashed.",
+      "suggestion": "Have wait report the resolved job when result.json cannot supply a valid object, and test those cases."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "location": "antigravity_mission_control/jobs.py:438",
+      "evidence": "jobs.py defines UNFINISHED_STATUSES = {\"starting\", \"running\", \"canceling\"}; jobstore.py:127 defines the same set as UNFINISHED.",
+      "problem": "Two definitions of the same status group can drift apart.",
+      "suggestion": "Reuse the existing jobstore constant."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 From 89ca34dd9a18d6afebb4065d8245f50710c56b9e Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 17:04:20 +0200
-Subject: [PATCH 2/3] colaudex(02-status-filter): status --limit and --state
+Subject: [PATCH 2/6] colaudex(02-status-filter): status --limit and --state
  for job listings
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -18,3 +18,12 @@ Extract the duration parsing in `cmd_wait` into `common.parse_duration`; `wait` 
 ### 03-prune (code, combo B; user chose Claude opus medium to execute, one Codex sol medium reviewer) — deps: 01
 `prune --older-than DURATION [--yes]`: dry run by default; deletes only terminal jobs whose finished_at is older than the cutoff; JSON report of removed / kept / skipped. Risky (deletes data) → heavy: Claude opus executes, two Codex reviewers.
 Scope: jobstore.py, jobs.py, cli.py, tests/test_prune.py (new).
+
+### 04-docs-and-hardening (code+docs, combo B, standard) — deps: 01, 02, 03
+Make the branch mergeable under CONTRIBUTING.md: document `status --limit/--state` and `prune` in every paired doc, allowlist the statuses prune treats as finished, add an Unreleased CHANGELOG entry, run npm test and npm pack --dry-run.
+
+### 05-malformed-status (code, combo B, heavy) — deps: 04
+Root-cause fix found in 04's review: jobstore.refresh_job trusts result.json's status and crashes on non-string statuses, which breaks `status` and `prune`. Validate in the shared code.
+
+### 06-read-job-guard (code, combo C, light) — deps: 05
+Root cause of 05's escalation: every command reads job.json through `jobstore.read_job`; reject a non-string status there so continue, cancel, worker finish and launch all fail with a clean error instead of a TypeError.

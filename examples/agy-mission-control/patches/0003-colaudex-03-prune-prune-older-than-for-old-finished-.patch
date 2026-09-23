@@ -1,7 +1,7 @@
 From ee8e1246fce2b0e58edae1411ada8e81caf035ad Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 17:17:12 +0200
-Subject: [PATCH 3/3] colaudex(03-prune): prune --older-than for old finished
+Subject: [PATCH 3/6] colaudex(03-prune): prune --older-than for old finished
  job directories
 
 Dry run by default; --yes removes only finished jobs with no live process,

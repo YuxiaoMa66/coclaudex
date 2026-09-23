@@ -102,12 +102,13 @@ python3 <skill 目录>/scripts/codex_run.py preflight  # Codex 是否可用
 
 ## 一次真实运行
 
-在 [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control)（一个带 64 个测试的 Python CLI）上跑了三个切片，完整审计记录见 [`examples/agy-mission-control`](examples/agy-mission-control)。
+在 [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control)（一个带 64 个测试的 Python CLI）上跑了六个切片，最后提交了[一个 PR](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2)。完整审计记录见 [`examples/agy-mission-control`](examples/agy-mission-control)。
 
 - **太宽松。** Claude 审查者把 pytest 写法的测试当成风格问题放过了。CI 用的是不装 pytest 的 `unittest`，14 个新测试根本不会运行。确认环节抓到后退回返工。
 - **漏网。** 新的 `prune` 命令把 `cancel_failed` 状态的 job 当成已结束，而它的进程可能还活着。两位审查者都没提，编排者提了。
 - **太严格。** 第 2 轮 Codex 审查者把软链接竞态标成 blocker。对照威胁模型核实后降为 minor 后续项，理由记录在案。
-- 最终 89 个测试通过，其中 25 个是新增的，代理总耗时约 14 分钟。
+- **升级机制起了作用。** 有两次切片用满两轮仍有成立的问题，colaudex 停下来问人；最后根源被定位到一个共用函数，一处修好，而不是逐个调用点打补丁。
+- 最终 103 个测试通过，其中 39 个是新增的，代理总耗时约 36 分钟。
 
 ## 早期测试
 

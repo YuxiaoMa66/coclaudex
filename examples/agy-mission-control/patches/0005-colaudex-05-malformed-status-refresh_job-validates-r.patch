@@ -1,0 +1,327 @@
+From 0d4a8a280ffb3e8334eeb5f85f88ef6f7253d261 Mon Sep 17 00:00:00 2001
+From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
+Date: Wed, 23 Sep 2026 18:47:07 +0200
+Subject: [PATCH 5/6] colaudex(05-malformed-status): refresh_job validates
+ result status; status, wait, cancel, prune survive malformed statuses
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ CHANGELOG.md                            |   1 +
+ antigravity_mission_control/jobs.py     |  22 ++--
+ antigravity_mission_control/jobstore.py |  21 ++-
+ tests/test_malformed_status.py          | 164 ++++++++++++++++++++++++
+ 4 files changed, 194 insertions(+), 14 deletions(-)
+ create mode 100644 tests/test_malformed_status.py
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 2e9b3fa..3b7d852 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -5,6 +5,7 @@
+ - New: `agy-mc status --limit N` and repeatable `--state` filter the job list by recency and state.
+ - New: `agy-mc prune --older-than DURATION [--yes]` deletes finished jobs (`done`, `done_with_warnings`, `error`, `crashed`, `cancel_failed`, `canceled`) whose `finished_at` is older than the cutoff; it keeps unfinished jobs, jobs with a live pid, and jobs with an unknown or unparseable status or `finished_at`, never follows symlinks, and is a dry run unless `--yes` is given.
+ - New: `agy-mc wait --timeout` also accepts `d` (days), alongside `ms`, `s`, `m`, and `h`.
++- Fix: a job whose `job.json` or `result.json` holds a malformed `status` (not a known status string, or a `result.json` that is not an object) crashed `agy-mc status`, `status <id>`, `wait`, `cancel` and `prune`. A stale job with such a result, or a `result.json` with no `status`, now resolves to `crashed`, a malformed status is never written into `job.json`, and prune keeps a job whose own status is malformed as `unknown status`.
+ 
+ ## 0.5.0 - 2026-09-22
+ 
+diff --git a/antigravity_mission_control/jobs.py b/antigravity_mission_control/jobs.py
+index 9823060..0e01b7f 100644
+--- a/antigravity_mission_control/jobs.py
++++ b/antigravity_mission_control/jobs.py
+@@ -22,7 +22,7 @@ from pathlib import Path
+ from . import jobstore
+ from .approvals import load_approval, validate_approval_binding
+ from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
+-from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
++from .jobstore import JOB_EXIT_CODES, UNFINISHED, acquire_workspace_lock, is_unfinished, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
+ from .routing import available_models, is_non_high_gemini, select_model
+ from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
+ 
+@@ -423,7 +423,7 @@ def cmd_status(args: argparse.Namespace) -> int:
+     if args.job_id:
+         job = refresh_job(read_job(args.job_id))
+         print(json.dumps(job, ensure_ascii=False, indent=2))
+-        return JOB_EXIT_CODES.get(job.get("status"), 1)
++        return _exit_code(job.get("status"))
+     jobs = list_jobs()
+     states = getattr(args, "state", None)
+     if states:
+@@ -435,7 +435,9 @@ def cmd_status(args: argparse.Namespace) -> int:
+     return 0
+ 
+ 
+-UNFINISHED_STATUSES = {"starting", "running", "canceling"}
++def _exit_code(status) -> int:
++    return JOB_EXIT_CODES.get(status, 1) if isinstance(status, str) else 1
++
+ 
+ # Only these statuses are eligible for deletion. Any other status - unknown, missing, or a
+ # future addition to JOB_EXIT_CODES that isn't listed here - is kept rather than assumed finished.
+@@ -455,8 +457,10 @@ def _finished_at(job: dict) -> datetime | None:
+ 
+ def _prune_reason(job: dict, cutoff: datetime) -> str | None:
+     """Why a job must be kept, or None when it is a finished job older than the cutoff."""
++    if not isinstance(job.get("status"), str):
++        return "unknown status"
+     # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
+-    if job.get("status") in UNFINISHED_STATUSES or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
++    if job.get("status") in UNFINISHED or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
+         return "unfinished"
+     if job.get("status") not in PRUNABLE_STATUSES:
+         return "unknown status"
+@@ -612,9 +616,9 @@ def cmd_wait(args: argparse.Namespace) -> int:
+     while True:
+         job = refresh_job(read_job(args.job_id))
+         status = job.get("status")
+-        if status not in {"starting", "running", "canceling"}:
++        if not is_unfinished(status):
+             print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
+-            return JOB_EXIT_CODES.get(status, 1)
++            return _exit_code(status)
+         if time.monotonic() >= deadline:
+             print(
+                 json.dumps(
+@@ -675,9 +679,9 @@ def cmd_cancel(args: argparse.Namespace) -> int:
+     job = refresh_job(read_job(args.job_id))
+     with job_lock(args.job_id):
+         job = read_job(args.job_id)
+-        if job.get("status") not in {"starting", "running", "canceling"}:
++        if not is_unfinished(job.get("status")):
+             print(json.dumps(job, ensure_ascii=False, indent=2))
+-            return JOB_EXIT_CODES.get(job.get("status"), 1)
++            return _exit_code(job.get("status"))
+         pid = job.get("pid")
+         if pid and not process_matches_job(pid, args.job_id):
+             raise RuntimeError(
+@@ -698,7 +702,7 @@ def cmd_cancel(args: argparse.Namespace) -> int:
+             write_terminal_result(job, final_status, "Job canceled and process exit confirmed" if terminated
+                                   else "Process did not exit after TERM and KILL")
+     print(json.dumps(job, ensure_ascii=False, indent=2))
+-    return JOB_EXIT_CODES.get(job.get("status"), 1)
++    return _exit_code(job.get("status"))
+ 
+ 
+ def cmd_continue(args: argparse.Namespace) -> int:
+diff --git a/antigravity_mission_control/jobstore.py b/antigravity_mission_control/jobstore.py
+index 04295f3..fad1622 100644
+--- a/antigravity_mission_control/jobstore.py
++++ b/antigravity_mission_control/jobstore.py
+@@ -124,20 +124,31 @@ def write_terminal_result(job: dict, status: str, error: str) -> None:
+     )
+ 
+ 
++UNFINISHED = {"starting", "running", "canceling"}
++
++
++def is_unfinished(status) -> bool:
++    # A non-string status (corrupt or hand-edited job.json) is left alone; callers decide how to show it.
++    return isinstance(status, str) and status in UNFINISHED
++
++
+ def refresh_job(job: dict) -> dict:
+-    if job.get("status") not in {"starting", "running", "canceling"}:
++    if not is_unfinished(job.get("status")):
+         return job
+     with job_lock(job["job_id"]):
+         job = read_job(job["job_id"])
+         status = job.get("status")
+-        if status not in {"starting", "running", "canceling"} or pid_alive(job.get("pid") or job.get("launcher_pid")):
++        if not is_unfinished(status) or pid_alive(job.get("pid") or job.get("launcher_pid")):
+             return job
+         if job_result_path(job["job_id"]).is_file():
+             try:
+                 result = json.loads(job_result_path(job["job_id"]).read_text(encoding="utf-8"))
+-                job["status"] = result.get("status", "error")
+             except (OSError, json.JSONDecodeError):
+-                job["status"] = "crashed"
++                result = None
++            final = result.get("status") if isinstance(result, dict) else None
++            # Only a known terminal status is copied into job.json; anything else is treated as a crash.
++            valid = isinstance(final, str) and final in JOB_EXIT_CODES and final not in UNFINISHED
++            job["status"] = final if valid else "crashed"
+         elif status == "canceling":
+             # The cancel command was interrupted, but the worker is gone: the cancel took effect.
+             job["status"] = "canceled"
+@@ -158,7 +169,7 @@ def list_jobs() -> list[dict]:
+     for path in JOB_ROOT.glob("*/job.json"):
+         try:
+             jobs.append(refresh_job(json.loads(path.read_text(encoding="utf-8"))))
+-        except (OSError, json.JSONDecodeError, KeyError, RuntimeError):
++        except (OSError, json.JSONDecodeError, KeyError, RuntimeError, TypeError, AttributeError):
+             continue
+     return sorted(jobs, key=lambda job: job.get("started_at", ""))
+ 
+diff --git a/tests/test_malformed_status.py b/tests/test_malformed_status.py
+new file mode 100644
+index 0000000..8745a37
+--- /dev/null
++++ b/tests/test_malformed_status.py
+@@ -0,0 +1,164 @@
++import argparse
++import contextlib
++from datetime import datetime, timedelta, timezone
++import io
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++from unittest import mock
++
++from antigravity_mission_control import jobs, jobstore
++
++ROOT = Path(__file__).resolve().parents[1]
++OLD = "2020-01-01T00:00:00+00:00"
++DEAD_PID = 999999
++
++
++class MalformedStatusTests(unittest.TestCase):
++    def setUp(self):
++        temp = tempfile.TemporaryDirectory()
++        self.addCleanup(temp.cleanup)
++        self.root = Path(temp.name)
++        patcher = mock.patch.object(jobstore, "JOB_ROOT", self.root)
++        patcher.start()
++        self.addCleanup(patcher.stop)
++
++    def add(self, name, result=None, **job):
++        job.setdefault("job_id", name)
++        (self.root / name).mkdir()
++        (self.root / name / "job.json").write_text(json.dumps(job))
++        if result is not None:
++            (self.root / name / "result.json").write_text(json.dumps(result))
++
++    def stale_bad_result(self, name="stale-job", result=None):
++        self.add(name, result={"status": ["done"]} if result is None else result,
++                 status="running", pid=DEAD_PID, finished_at=OLD)
++
++    def job_json(self, name):
++        return json.loads((self.root / name / "job.json").read_text())
++
++    def run_cmd(self, func, **ns):
++        out = io.StringIO()
++        with contextlib.redirect_stdout(out):
++            code = func(argparse.Namespace(**ns))
++        return code, json.loads(out.getvalue())
++
++    def status(self, job_id=None):
++        return self.run_cmd(jobs.cmd_status, job_id=job_id, state=None, limit=None)
++
++    def prune(self, yes):
++        return self.run_cmd(jobs.cmd_prune, older_than=jobs.parse_duration("1d"), yes=yes)
++
++    def assert_job_json_statuses_valid(self):
++        for path in self.root.glob("*/job.json"):
++            status = json.loads(path.read_text()).get("status")
++            self.assertTrue(isinstance(status, str) and status in jobstore.JOB_EXIT_CODES, (path, status))
++
++    # Reproduction 1: stale running job whose result.json carries a list status.
++    def test_status_list_with_bad_result(self):
++        self.stale_bad_result()
++        code, payload = self.status()
++        self.assertEqual(code, 0)
++        self.assertEqual([j["status"] for j in payload["jobs"]], ["crashed"])
++        self.assertEqual(self.job_json("stale-job")["status"], "crashed")
++
++    def test_status_id_with_bad_result(self):
++        self.stale_bad_result()
++        code, payload = self.status("stale-job")
++        self.assertEqual(payload["status"], "crashed")
++        self.assertEqual(code, jobstore.JOB_EXIT_CODES["crashed"])
++        self.assert_job_json_statuses_valid()
++
++    def test_prune_dry_run_and_yes_with_bad_result(self):
++        self.stale_bad_result()
++        self.add("old-done", status="done", finished_at=OLD)
++        _, payload = self.prune(yes=False)
++        self.assertEqual(sorted(payload["would_remove"]), ["old-done", "stale-job"])
++        self.assert_job_json_statuses_valid()
++        _, payload = self.prune(yes=True)
++        self.assertEqual(sorted(payload["removed"]), ["old-done", "stale-job"])
++        self.assertEqual(os.listdir(self.root), [])
++
++    def test_unknown_string_and_non_object_results_resolve_to_crashed(self):
++        self.stale_bad_result("unknown-str", result={"status": "exploded"})
++        self.stale_bad_result("number", result={"status": 3})
++        self.stale_bad_result("still-running", result={"status": "running"})
++        self.stale_bad_result("not-object", result=["done"])
++        self.stale_bad_result("good", result={"status": "canceled"})
++        _, payload = self.status()
++        got = {j["job_id"]: j["status"] for j in payload["jobs"]}
++        self.assertEqual(got, {"unknown-str": "crashed", "number": "crashed", "still-running": "crashed",
++                               "not-object": "crashed", "good": "canceled"})
++        self.assert_job_json_statuses_valid()
++
++    def test_result_without_status_resolves_to_crashed(self):
++        self.stale_bad_result("no-status", result={"error": "boom"})
++        _, payload = self.status("no-status")
++        self.assertEqual(payload["status"], "crashed")
++        self.assertEqual(self.job_json("no-status")["status"], "crashed")
++
++    def test_cancel_with_list_status_does_not_crash(self):
++        self.add("bad-job", status=["done"], pid=DEAD_PID)
++        before = (self.root / "bad-job" / "job.json").read_text()
++        with mock.patch.object(jobs, "terminate_process_group") as term:
++            code, payload = self.run_cmd(jobs.cmd_cancel, job_id="bad-job", grace_seconds=1)
++        term.assert_not_called()
++        self.assertEqual(code, 1)
++        self.assertEqual(payload["status"], ["done"])
++        self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
++
++    # Reproduction 2: job.json itself holds a list status.
++    def test_list_status_in_job_json(self):
++        self.add("bad-job", status=["done"], finished_at=OLD)
++        self.add("old-done", status="done", finished_at=OLD)
++        before = (self.root / "bad-job" / "job.json").read_text()
++        code, payload = self.status()
++        self.assertEqual(code, 0)
++        self.assertEqual({j["job_id"] for j in payload["jobs"]}, {"bad-job", "old-done"})
++        code, payload = self.status("bad-job")
++        self.assertEqual(code, 1)
++        self.assertEqual(payload["status"], ["done"])
++        _, payload = self.prune(yes=False)
++        self.assertEqual(payload["would_remove"], ["old-done"])
++        _, payload = self.prune(yes=True)
++        self.assertEqual(payload["removed"], ["old-done"])
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["bad-job"], "unknown status")
++        self.assertEqual((self.root / "bad-job" / "job.json").read_text(), before)
++
++    def test_wait_with_list_status_does_not_crash(self):
++        self.add("bad-job", result={"status": "done"}, status=["done"])
++        code, payload = self.run_cmd(jobs.cmd_wait, job_id="bad-job", timeout="1s", timeout_seconds_override=None)
++        self.assertEqual(code, 1)
++        self.assertEqual(payload["status"], "done")
++
++    def test_prune_reason_rejects_non_string_status(self):
++        cutoff = datetime.now(timezone.utc) - timedelta(days=1)
++        self.assertEqual(jobs._prune_reason({"status": ["done"], "finished_at": OLD}, cutoff), "unknown status")
++
++    def test_list_jobs_skips_unrefreshable_entry(self):
++        (self.root / "list-job").mkdir()
++        (self.root / "list-job" / "job.json").write_text("[1]")
++        self.add("old-done", status="done", finished_at=OLD)
++        self.assertEqual([j["job_id"] for j in jobstore.list_jobs()], ["old-done"])
++
++    def test_cli_reproductions(self):
++        self.stale_bad_result()
++        self.add("bad-job", status=["done"], finished_at=OLD)
++        env = {**os.environ, "AGY_MC_JOB_ROOT": str(self.root)}
++        for argv in (["status"], ["status", "stale-job"], ["status", "bad-job"],
++                     ["prune", "--older-than", "1d"], ["prune", "--older-than", "1d", "--yes"]):
++            proc = subprocess.run([sys.executable, "-m", "antigravity_mission_control.cli", *argv],
++                                  cwd=ROOT, env=env, capture_output=True, text=True)
++            self.assertNotIn("Traceback", proc.stderr, argv)
++            json.loads(proc.stdout)
++        self.assertFalse((self.root / "stale-job").exists())
++        self.assertTrue((self.root / "bad-job").is_dir())
++
++
++if __name__ == "__main__":
++    unittest.main()
+-- 
+2.50.1 (Apple Git-155)
+

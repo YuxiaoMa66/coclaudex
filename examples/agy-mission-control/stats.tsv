@@ -9,3 +9,13 @@ run	role	backend	tier	model	secs	in_tok	cached	out_tok	outcome
 03-prune.r1	review	codex	standard	gpt-6-sol/medium	66	130641	86912	2457	fix
 03-prune.r2	exec	claude	heavy	opus/medium	119.4	73084	-	-	DONE
 03-prune.r2	review	codex	standard	gpt-6-sol/medium	78	288817	234240	3104	fix
+04-docs-and-hardening.r1	exec	claude	standard	sonnet/medium	241.7	97356	-	-	DONE
+04-docs-and-hardening.r1	review	codex	standard	gpt-6-sol/medium	88	389670	334208	3161	fix
+04-docs-and-hardening.r2	exec	claude	standard	sonnet/medium	165.7	85511	-	-	DONE
+04-docs-and-hardening.r2	review	codex	standard	gpt-6-sol/medium	68	324812	267136	2207	fix
+05-malformed-status.r1	exec	claude	heavy	opus/medium	122.6	77964	-	-	DONE
+05-malformed-status.r1a	review	codex	heavy	gpt-6-sol/high	144	631445	563712	4977	fix
+05-malformed-status.r1b	review	codex	heavy	gpt-6-sol/high	150	650705	584576	5322	fix
+05-malformed-status.r2	exec	claude	heavy	opus/medium	81.3	68441	-	-	DONE
+06-read-job-guard.r1	exec	codex	light	gpt-6-luna/medium	134	433929	386304	4316	PARTIAL
+06-read-job-guard.r1	review	claude	light	opus/medium	102.9	23551	-	-	pass

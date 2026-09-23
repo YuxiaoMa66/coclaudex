@@ -1,0 +1,4 @@
+Executor r2 (claude opus medium): a-F2 cancel guarded, missing result status → crashed, single UNFINISHED definition. unittest 102 OK (orchestrator rerun).
+Reviewers r2: not run. The executor itself reported `continue` still crashes; the orchestrator grepped every status membership/lookup and found more sites (jobs.py:396/415 worker, jobs.py:710 continue, approvals.py:100, jobstore.py:363) and reproduced `agy-mc continue job2` → `TypeError: unhashable type: 'list'`. The outcome was known, so two sol-high reviews would only have spent quota.
+O1 [major] VALID — continue (and the other sites) crash on a non-string status. Root cause: the handoff chased call sites; every site reads through `jobstore.read_job`, which already rejects non-object metadata. The fix belongs there.
+Decision: round 2 of 2 with a VALID major → ESCALATED. User chose: accept 05 as is, fix in read_job in a new slice 06, then open the PR.
