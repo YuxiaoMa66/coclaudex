@@ -1,7 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 — 2026-09-23
 - Renamed colaudex → coClaudex (repo `YuxiaoMa66/coclaudex`, plugin/skill `coclaudex`, agents `coclaudex-*`, commits `coclaudex(<slice>)`). Reinstall: `/plugin marketplace add YuxiaoMa66/coclaudex`, `/plugin install coclaudex@coclaudex`.
+- Lessons from the agy-mission-control run:
+  - Confirmation rates severity itself against the spec and threat model, and records re-ratings (`[blocker→minor]`, `[nit→blocker]`) with the reason.
+  - A VALID finding whose root cause predates the slice or lies outside its scope becomes a new slice, not another rework round.
+  - After rework, skip the review when the remaining failure is already known.
+  - Slices that delete or migrate data define what qualifies as an allowlist, not a denylist.
+  - Code reviewers treat new tests that CI would not collect as a blocker.
+  - Finish runs every CI check, not only the tests.
 
 ## 1.3.0 — 2026-09-23
 - New tier `overkill` (疯狂): Codex gpt-6-astra and Claude Fable on both sides, two reviewers. Never recommended by default; Fable needs usage credits, and a Fable credits/access failure asks the user before any fallback.
