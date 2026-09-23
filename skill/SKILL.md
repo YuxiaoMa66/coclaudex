@@ -108,8 +108,8 @@ When every slice is ACCEPTED (or the user has decided on the escalated ones), ru
 
 ## Rules
 
-- Run slices **sequentially** in the main working tree. (ponytail: no parallel slices or worktrees yet. Add them once the Codex rate limits for long tasks are measured, capped at 2 concurrent Codex executors.)
+- Run slices **sequentially** in the main working tree. (Deliberate limit: no parallel slices or worktrees yet. Add them once Codex rate limits for long tasks are measured, capped at 2 concurrent Codex executors.)
 - Only the orchestrator commits. Never push unless the user asks.
 - Never pass a model to Codex outside config's `allowed_models`. Never use `chatgpt-web/*` models.
 - Do not edit `~/.codex/config.toml`. All overrides go through `codex_run.py` flags.
-- The ponytail hook is loaded in Codex. It can make executors skip running tests. The worker rules override it, and you re-run the tests at confirmation anyway.
+- Global Codex hooks or AGENTS.md style rules (for example a "write minimal code" rule) can make executors skip running tests. The worker rules override them, and you re-run the tests at confirmation anyway.
