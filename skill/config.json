@@ -1,0 +1,28 @@
+{
+  "max_rounds": 2,
+  "codex": {
+    "allowed_models": ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"],
+    "stale_seconds": 600,
+    "max_seconds": 3600
+  },
+  "tiers": {
+    "light": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "medium"}, "claude": {"agent": "colaudex-exec-sonnet-low", "model": "sonnet"}},
+      "review": {"codex": {"model": "gpt-6-sol",  "effort": "medium"}, "claude": {"agent": "colaudex-review-opus-medium", "model": "opus"}}
+    },
+    "standard": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "high"},   "claude": {"agent": "colaudex-exec-sonnet-medium", "model": "sonnet"}},
+      "review": {"codex": {"model": "gpt-6-sol",  "effort": "medium"}, "claude": {"agent": "colaudex-review-opus-medium", "model": "opus"}}
+    },
+    "heavy": {
+      "exec":   {"codex": {"model": "gpt-6-sol",   "effort": "medium"}, "claude": {"agent": "colaudex-exec-opus-medium", "model": "opus"}},
+      "review": {"codex": {"model": "gpt-6-astra", "effort": "medium"}, "claude": {"agent": "colaudex-review-opus-high", "model": "opus"}},
+      "second_reviewer": true
+    },
+    "test": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "low"}, "claude": {"agent": "colaudex-exec-sonnet-low", "model": "haiku"}},
+      "review": {"codex": {"model": "gpt-6-luna", "effort": "low"}, "claude": {"agent": "colaudex-review-opus-medium", "model": "haiku"}}
+    }
+  },
+  "paper_exec": {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "colaudex-exec-opus-medium", "model": "opus"}}
+}
