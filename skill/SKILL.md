@@ -26,7 +26,7 @@ Write `.colab/PLAN.md`:
 - **Requirements**, and a project-level definition of done.
 - **Slices**, numbered `01-name`, `02-name`, and so on. Each slice needs: kind (`code` or `paper`), goal, scope (the files it may modify), steps, acceptance (checkable criteria plus verification commands), dependencies, and the Codex skills to use (or none).
 
-Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed.
+Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. Before writing acceptance commands, check how the project itself runs its checks (CI config, CONTRIBUTING, Makefile) and use the same runner and test style. Say it in the handoff's Context, so an executor does not write pytest tests for a project whose CI runs unittest. Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed.
 
 Show the plan and **wait for the user to approve it** before executing anything.
 
@@ -39,16 +39,15 @@ States: `PLANNED → EXECUTING → REVIEWING → CONFIRMING → ACCEPTED`, plus 
 
 ### 2.1 Choose combo and tier
 
-Unless a sticky choice from earlier still applies, ask with **one** AskUserQuestion that has these questions:
-- **Combo** (put your recommendation first, marked "(Recommended)"):
-  - A: Claude executes, Claude reviews
-  - B: Claude executes, Codex reviews
-  - C: Codex executes, Claude reviews
-  - D: Codex executes, Codex reviews
+Unless a sticky choice from earlier still applies, ask in **two steps**, because the tier options depend on the combo. Write the questions in the user's language, and name the slice by what it does in plain words ("add a `prune` command that deletes old job folders"), not only by its id.
 
-  Recommend a cross-model combo. Recommend C when the handoff fully specifies the work, and B when the slice needs judgment or deep context from the codebase.
-- **Tier**: light / standard / heavy. Mark standard as recommended unless the slice is risky (auth, data migration, core argument of the paper) → recommend heavy.
+**Step 1: combo**. Use one AskUserQuestion with two questions:
+- **Who does the work?** Labels spell out both roles, for example `C: Codex writes → Claude reviews`. Each description is one line on when this combo fits. Put your recommendation first, marked "(Recommended)". Recommend a cross-model combo: C when the handoff fully specifies the work, B when the slice needs judgment or deep context from the codebase. A and D are same-family: they are cheaper on one side, but the reviewer is less independent.
 - **Apply to**: this slice only / all remaining slices in this phase.
+
+**Step 2: tier**. Run `python3 $SK/scripts/codex_run.py describe --combo <X> --kind <kind>`. Then ask one AskUserQuestion whose four options are the tiers. Each description shows **only the models this combo uses**, taken from that output, plus a few words on cost and depth. For example, for combo C: `standard: Codex gpt-6-luna (high) writes, Claude opus (medium) reviews. The default.` Never list the other backend's models. Mark standard as recommended unless the slice is risky (auth, deleting or migrating data, the core argument of a paper); then recommend heavy and say why in the question.
+
+Execution and review tiers may differ. If the user picks a mix, for example "opus writes, sol reviews" (heavy exec with standard review), record the tier as `exec:heavy/review:standard`, and pass each side its own tier: `--tier heavy` for the executor and `--tier standard` for the reviewer, or the matching Claude agent and model from that tier's config. A heavy second reviewer comes only with a heavy review tier.
 
 The tier maps to models through `$SK/config.json`. Paper slices execute with `paper_exec` whatever tier is chosen, except the `test` tier. Only when the user asks for a cheap test run, use the `test` tier (Codex luna low, Claude haiku).
 
@@ -72,7 +71,7 @@ Wait for the completion notification. Do not poll.
 
 - Codex `error_class: INFRA_FAIL`: retry once. If it fails again, set INFRA_FAIL and ask the user: wait and retry, or switch this role to Claude at the same tier.
 - `STATUS: BLOCKED`: set BLOCKED and bring the reason back to the plan. Fix the plan or the handoff with the user; do not retry blindly. The re-run is an aborted attempt (see 2.3), in the same round.
-- `sandbox_denied: true`: ask the user whether to widen access. Never widen it silently.
+- `sandbox_denied: true`: ask the user whether to widen access. Never widen it silently. Exception: if the executor's own work is verified and only pre-existing tests failed because the sandbox blocked them (for example `ps` or signals: "Operation not permitted"), do not widen anything. Treat it as PARTIAL and rerun the full suite yourself at confirmation.
 - `STATUS: PARTIAL` or `UNKNOWN`: still go to review, and note it.
 - **Scope check (always)**: compare `git diff --name-only <base_sha>` plus untracked files against "May modify". Any file outside the scope is a blocker for confirmation. Build and cache artifacts from test runs, such as `__pycache__/` or `.pytest_cache/`, are not violations. Add them to `.git/info/exclude` so they stop showing up.
 - Reviewer `sandbox_denied: true` is expected: a read-only reviewer often can't run tests. It is not an error.

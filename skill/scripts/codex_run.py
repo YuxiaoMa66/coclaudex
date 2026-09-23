@@ -6,6 +6,7 @@
   codex_run.py review --tier T --prompt FILE --out PREFIX [--cwd DIR]
   codex_run.py validate FILE        # check a review JSON (for example one written by a Claude reviewer)
   codex_run.py stats [COLAB_DIR]    # one row per run from all *.result.json (Codex and Claude)
+  codex_run.py describe --combo A|B|C|D [--kind code|paper]   # per tier: the exact models that combo would use
 
 Writes PREFIX.jsonl / .err / .last.md / .result.json (review also PREFIX.json) and prints the result JSON.
 Exit code 0 = Codex finished (check "status"/"error_class"); 1 = infra failure or invalid review.
@@ -181,6 +182,27 @@ def cmd_stats(a):
     return 0
 
 
+COMBOS = {"A": ("claude", "claude"), "B": ("claude", "codex"), "C": ("codex", "claude"), "D": ("codex", "codex")}
+
+
+def model_label(backend, m):
+    if backend == "codex":
+        return f"Codex {m['model']} ({m['effort']})"
+    return f"Claude {m['model']} ({m['agent'].rsplit('-', 1)[1]})"  # effort lives in the agent name
+
+
+def cmd_describe(a):
+    exec_b, review_b = COMBOS[a.combo]
+    out = {}
+    for tier, t in CFG["tiers"].items():
+        ex = CFG["paper_exec"] if a.kind == "paper" and tier != "test" else t["exec"]
+        n = 2 if t.get("second_reviewer") else 1
+        out[tier] = {"exec": model_label(exec_b, ex[exec_b]),
+                     "review": model_label(review_b, t["review"][review_b]) + (f" x{n}" if n > 1 else "")}
+    print(json.dumps(out, ensure_ascii=False, indent=1))
+    return 0
+
+
 def cmd_preflight(_):
     try:
         ver = subprocess.run(["codex", "--version"], capture_output=True, text=True, timeout=20).stdout.strip()
@@ -205,6 +227,9 @@ def main():
     sub.add_parser("preflight")
     v = sub.add_parser("validate")
     v.add_argument("file")
+    d = sub.add_parser("describe")
+    d.add_argument("--combo", required=True, choices=list("ABCD"))
+    d.add_argument("--kind", default="code", choices=["code", "paper"])
     st = sub.add_parser("stats")
     st.add_argument("dir", nargs="?", default=".colab")
     for role in ("exec", "review"):
@@ -223,6 +248,8 @@ def main():
         return cmd_validate(a)
     if a.cmd == "stats":
         return cmd_stats(a)
+    if a.cmd == "describe":
+        return cmd_describe(a)
     return cmd_run(a, a.cmd)
 
 
