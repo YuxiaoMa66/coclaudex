@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/og.png" width="720" alt="colaudex"></p>
+<p align="center"><img src="docs/assets/og.png" width="720" alt="coClaudex"></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.9%2B-3f444d" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/Claude_Code-tested_2.1.267-d9480f" alt="Claude Code tested 2.1.267">
   <img src="https://img.shields.io/badge/Codex_CLI-tested_0.156.1-5b616e" alt="Codex CLI tested 0.156.1">
-  <a href="https://github.com/YuxiaoMa66/colaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/colaudex?label=plugin&color=16181d" alt="Latest release"></a>
+  <a href="https://github.com/YuxiaoMa66/coclaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/coclaudex?label=plugin&color=16181d" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
@@ -14,7 +14,7 @@
 
 这是一个 [Claude Code](https://claude.com/claude-code) skill：把工作拆成小切片，由 Claude 或 Codex 执行，再由*另一个*模型审查；每条审查意见都要 Claude 亲自复现，确认后才提交。代码和论文都适用。
 
-[项目主页](https://yuxiaoma66.github.io/colaudex/) · [更新记录](CHANGELOG.md) · [真实运行示例](examples/agy-mission-control)
+[项目主页](https://yuxiaoma66.github.io/coclaudex/) · [更新记录](CHANGELOG.md) · [真实运行示例](examples/agy-mission-control)
 
 ```mermaid
 flowchart LR
@@ -57,7 +57,7 @@ flowchart LR
 | 疯狂 overkill | astra, medium | astra, medium（两位） | fable, medium | fable, high（两位） |
 | 测试 test | luna, low | luna, low | haiku | haiku |
 
-重档和疯狂档都会增加一位侧重点不同的审查者。只有疯狂档会用到 gpt-6-astra 和 Claude Fable；Fable 需要在 Claude 套餐之外额外购买用量额度。测试档仅用于演练。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/colaudex/config.json` 中修改。
+重档和疯狂档都会增加一位侧重点不同的审查者。只有疯狂档会用到 gpt-6-astra 和 Claude Fable；Fable 需要在 Claude 套餐之外额外购买用量额度。测试档仅用于演练。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/coclaudex/config.json` 中修改。
 
 ## 安装
 
@@ -66,19 +66,19 @@ flowchart LR
 **作为插件安装**（推荐）。在 Claude Code 里输入：
 
 ```text
-/plugin marketplace add YuxiaoMa66/colaudex
-/plugin install colaudex@colaudex
+/plugin marketplace add YuxiaoMa66/coclaudex
+/plugin install coclaudex@coclaudex
 ```
 
-装好后重启一次 Claude Code。以后用 `/plugin marketplace update colaudex` 更新。
+装好后重启一次 Claude Code。以后用 `/plugin marketplace update coclaudex` 更新。
 
 **从克隆目录安装**（想改源码时用）。软链接让修改即时生效：
 
 ```bash
-git clone https://github.com/YuxiaoMa66/colaudex.git
-cd colaudex
-ln -s "$PWD/skills/colaudex" ~/.claude/skills/colaudex
-for f in agents/colaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
+git clone https://github.com/YuxiaoMa66/coclaudex.git
+cd coclaudex
+ln -s "$PWD/skills/coclaudex" ~/.claude/skills/coclaudex
+for f in agents/coclaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 ```
 
 两种方式二选一，不要同时使用。
@@ -88,7 +88,7 @@ for f in agents/colaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 在任意 git 仓库里对 Claude Code 说：
 
 ```text
-colaudex：给 API 加限流。拆成切片，Codex 执行，Claude 审查。
+coclaudex：给 API 加限流。拆成切片，Codex 执行，Claude 审查。
 ```
 
 运行中常用的命令：
@@ -107,7 +107,7 @@ python3 <skill 目录>/scripts/codex_run.py preflight  # Codex 是否可用
 - **太宽松。** Claude 审查者把 pytest 写法的测试当成风格问题放过了。CI 用的是不装 pytest 的 `unittest`，14 个新测试根本不会运行。确认环节抓到后退回返工。
 - **漏网。** 新的 `prune` 命令把 `cancel_failed` 状态的 job 当成已结束，而它的进程可能还活着。两位审查者都没提，编排者提了。
 - **太严格。** 第 2 轮 Codex 审查者把软链接竞态标成 blocker。对照威胁模型核实后降为 minor 后续项，理由记录在案。
-- **升级机制起了作用。** 有两次切片用满两轮仍有成立的问题，colaudex 停下来问人；最后根源被定位到一个共用函数，一处修好，而不是逐个调用点打补丁。
+- **升级机制起了作用。** 有两次切片用满两轮仍有成立的问题，coClaudex 停下来问人；最后根源被定位到一个共用函数，一处修好，而不是逐个调用点打补丁。
 - 最终 103 个测试通过，其中 39 个是新增的，代理总耗时约 36 分钟。
 
 ## 早期测试
@@ -123,7 +123,7 @@ python3 <skill 目录>/scripts/codex_run.py preflight  # Codex 是否可用
 ## 目录结构
 
 ```text
-skills/colaudex/   SKILL.md、config.json、scripts/codex_run.py、templates/、schemas/
+skills/coclaudex/   SKILL.md、config.json、scripts/codex_run.py、templates/、schemas/
 agents/            Claude 执行者和审查者子代理（模型和 effort 写在 frontmatter）
 .claude-plugin/    插件和插件来源清单
 docs/              项目主页（GitHub Pages）

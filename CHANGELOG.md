@@ -1,14 +1,17 @@
 # Changelog
 
+## Unreleased
+- Renamed colaudex → coClaudex (repo `YuxiaoMa66/coclaudex`, plugin/skill `coclaudex`, agents `coclaudex-*`, commits `coclaudex(<slice>)`). Reinstall: `/plugin marketplace add YuxiaoMa66/coclaudex`, `/plugin install coclaudex@coclaudex`.
+
 ## 1.3.0 — 2026-09-23
 - New tier `overkill` (疯狂): Codex gpt-6-astra and Claude Fable on both sides, two reviewers. Never recommended by default; Fable needs usage credits, and a Fable credits/access failure asks the user before any fallback.
 - `heavy` Codex review is now gpt-6-sol high (x2); light, standard and heavy no longer use astra or Fable.
-- New agents `colaudex-exec-fable-medium`, `colaudex-review-fable-high`.
+- New agents `coclaudex-exec-fable-medium`, `coclaudex-review-fable-high`.
 - The tier question offers light / standard / heavy / overkill; `test` only on request.
 - Paper slices use `paper_exec` only on light and standard; overkill uses its own models.
 
 ## 1.2.0 — 2026-09-23
-- Installable as a Claude Code plugin (`.claude-plugin/`); the skill moved to `skills/colaudex/`. Agent names may carry the `colaudex:` prefix.
+- Installable as a Claude Code plugin (`.claude-plugin/`); the skill moved to `skills/coclaudex/`. Agent names may carry the `coclaudex:` prefix.
 - Combo and tier are chosen in two steps; tier options show only the models the chosen combo uses (`codex_run.py describe`). Execution and review tiers can differ.
 - Plans must use the project's own test runner (a reviewer passed pytest tests that a unittest-only CI would never run).
 - Sandbox-blocked pre-existing tests are PARTIAL, not a reason to widen access.

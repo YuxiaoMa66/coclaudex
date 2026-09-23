@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The only way colaudex calls Codex. Stdlib only.
+"""The only way coclaudex calls Codex. Stdlib only.
 
   codex_run.py preflight
   codex_run.py exec   --tier T [--kind code|paper] --prompt FILE --out PREFIX [--cwd DIR] [--resume THREAD_ID]

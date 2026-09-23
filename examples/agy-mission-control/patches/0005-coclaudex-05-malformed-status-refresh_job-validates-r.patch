@@ -1,7 +1,7 @@
 From 0d4a8a280ffb3e8334eeb5f85f88ef6f7253d261 Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 18:47:07 +0200
-Subject: [PATCH 5/6] colaudex(05-malformed-status): refresh_job validates
+Subject: [PATCH 5/6] coclaudex(05-malformed-status): refresh_job validates
  result status; status, wait, cancel, prune survive malformed statuses
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

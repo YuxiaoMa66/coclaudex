@@ -1,6 +1,6 @@
-# PLAN — antigravity-mission-control: job housekeeping (colaudex public example)
+# PLAN — antigravity-mission-control: job housekeeping (coclaudex public example)
 
-Repo: YuxiaoMa66/antigravity-mission-control @ v0.5.0 (branch colaudex-demo in a local clone). Baseline: `python3 -m pytest -q` → 64 passed.
+Repo: YuxiaoMa66/antigravity-mission-control @ v0.5.0 (branch coclaudex-demo in a local clone). Baseline: `python3 -m pytest -q` → 64 passed.
 
 ## Requirements
 1. Duration strings ("100s", "5m", "1h") are parsed in one shared place.

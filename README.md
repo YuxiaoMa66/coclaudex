@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/og.png" width="720" alt="colaudex: one model builds, another checks, Claude decides"></p>
+<p align="center"><img src="docs/assets/og.png" width="720" alt="coClaudex: one model builds, another checks, Claude decides"></p>
 
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.9%2B-3f444d" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/Claude_Code-tested_2.1.267-d9480f" alt="Claude Code tested 2.1.267">
   <img src="https://img.shields.io/badge/Codex_CLI-tested_0.156.1-5b616e" alt="Codex CLI tested 0.156.1">
-  <a href="https://github.com/YuxiaoMa66/colaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/colaudex?label=plugin&color=16181d" alt="Latest release"></a>
+  <a href="https://github.com/YuxiaoMa66/coclaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/coclaudex?label=plugin&color=16181d" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
 </p>
 
@@ -14,7 +14,7 @@
 
 A [Claude Code](https://claude.com/claude-code) skill that splits work into slices, has Claude or Codex execute each one, has the *other* model review it, and then makes Claude reproduce every review finding before anything is committed. It works for code and for papers.
 
-[Project page](https://yuxiaoma66.github.io/colaudex/) · [Changelog](CHANGELOG.md) · [Real-run example](examples/agy-mission-control)
+[Project page](https://yuxiaoma66.github.io/coclaudex/) · [Changelog](CHANGELOG.md) · [Real-run example](examples/agy-mission-control)
 
 ```mermaid
 flowchart LR
@@ -57,7 +57,7 @@ flowchart LR
 | overkill | astra, medium | astra, medium (×2) | fable, medium | fable, high (×2) |
 | test | luna, low | luna, low | haiku | haiku |
 
-Heavy and overkill add a second reviewer with a different focus. Overkill is the only tier that uses gpt-6-astra and Claude Fable; Fable needs usage credits on top of a Claude plan. `test` is for dry runs only. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/colaudex/config.json` to change the mapping.
+Heavy and overkill add a second reviewer with a different focus. Overkill is the only tier that uses gpt-6-astra and Claude Fable; Fable needs usage credits on top of a Claude plan. `test` is for dry runs only. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/coclaudex/config.json` to change the mapping.
 
 ## Install
 
@@ -66,19 +66,19 @@ Requires Claude Code, git and Python 3. Codex CLI (logged in) is needed for comb
 **As a plugin** (recommended). In Claude Code:
 
 ```text
-/plugin marketplace add YuxiaoMa66/colaudex
-/plugin install colaudex@colaudex
+/plugin marketplace add YuxiaoMa66/coclaudex
+/plugin install coclaudex@coclaudex
 ```
 
-Restart Claude Code once afterwards. Update later with `/plugin marketplace update colaudex`.
+Restart Claude Code once afterwards. Update later with `/plugin marketplace update coclaudex`.
 
 **From a clone** (to hack on it). Symlinks keep your edits live:
 
 ```bash
-git clone https://github.com/YuxiaoMa66/colaudex.git
-cd colaudex
-ln -s "$PWD/skills/colaudex" ~/.claude/skills/colaudex
-for f in agents/colaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
+git clone https://github.com/YuxiaoMa66/coclaudex.git
+cd coclaudex
+ln -s "$PWD/skills/coclaudex" ~/.claude/skills/coclaudex
+for f in agents/coclaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 ```
 
 Use one method, not both.
@@ -88,7 +88,7 @@ Use one method, not both.
 In any git repository, ask Claude Code:
 
 ```text
-colaudex: add rate limiting to the API. Plan it in slices, Codex executes, Claude reviews.
+coclaudex: add rate limiting to the API. Plan it in slices, Codex executes, Claude reviews.
 ```
 
 Useful commands while a run is going:
@@ -107,7 +107,7 @@ Six slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigr
 - **Too lenient.** A Claude reviewer passed pytest-style tests as a style nit. CI runs `unittest` without pytest, so the 14 new tests would never have run. Confirmation caught it and sent the slice back.
 - **A miss.** A new `prune` command treated `cancel_failed` jobs as finished, although their worker may still be alive. Neither reviewer raised it; the orchestrator did.
 - **Too strict.** In round 2 a Codex reviewer rated symlink races as blockers. Checked against the threat model, they became minor follow-ups, and the reasons are on file.
-- **Escalations that worked.** Twice a slice hit the two-round limit with a valid finding left. colaudex stopped and asked, and the root cause ended up as one check in a shared function instead of a patch per call site.
+- **Escalations that worked.** Twice a slice hit the two-round limit with a valid finding left. coClaudex stopped and asked, and the root cause ended up as one check in a shared function instead of a patch per call site.
 - End state: 103 tests pass, 39 of them new, after about 36 minutes of agent time.
 
 ## Earlier tests
@@ -123,7 +123,7 @@ From a fault-injection run (`test` tier) and two paper runs:
 ## Layout
 
 ```text
-skills/colaudex/   SKILL.md, config.json, scripts/codex_run.py, templates/, schemas/
+skills/coclaudex/   SKILL.md, config.json, scripts/codex_run.py, templates/, schemas/
 agents/            Claude executor and reviewer subagents (model and effort in frontmatter)
 .claude-plugin/    plugin and marketplace manifests
 docs/              project page (GitHub Pages)

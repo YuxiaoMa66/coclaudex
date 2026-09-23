@@ -2,7 +2,7 @@
 
 The target is [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control) v0.5.0, a Python CLI with 64 tests. The goal was job housekeeping. The run started from commit `0fc10c8`, and the result was merged as [pull request #2](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2) after all 12 CI checks passed (Python 3.10, 3.12 and 3.14 included).
 
-This folder is the audit trail as colaudex left it. Only local paths were replaced with `<repo>` and `<tmp>`.
+This folder is the audit trail as coClaudex left it. Only local paths were replaced with `<repo>` and `<tmp>`.
 
 | slice | who | tier | rounds | result |
 |---|---|---|---|---|
@@ -31,7 +31,7 @@ End state: 103 tests pass, up from 64 (39 new). CI's bundle-sync, compile, `npm 
 **Two escalations, one root cause (04 → 05 → 06).**
 - In 04, the review found that a malformed `status` in a job file crashed prune. Reproducing it showed that plain `agy-mc status` crashed too, which was a bug already in v0.5.0.
 - The 05 handoff listed call sites to guard. Each round, another site turned up: `cancel`, then `continue`, the worker and launch.
-- Both slices hit the two-round limit with a valid major finding still open, so colaudex stopped and asked the user each time.
+- Both slices hit the two-round limit with a valid major finding still open, so coClaudex stopped and asked the user each time.
 - The fix that ended it was one check in `read_job`, which every command already goes through (06, one round).
 - That lesson is now a skill rule: grep every occurrence of a bug pattern first, and fix it at the shared entry point.
 
@@ -41,9 +41,9 @@ End state: 103 tests pass, up from 64 (39 new). CI's bundle-sync, compile, `npm 
 - Only reviewer b, focused on design, found two minor issues.
 - See [`confirm/05-malformed-status.r1.md`](confirm/05-malformed-status.r1.md).
 
-**colaudex's own bug (06).**
-- The target repo has a test that checks every Markdown link on disk. It flagged links inside colaudex's raw run output in `.colab/runs/*.last.md`.
-- colaudex now saves raw output as `.txt`, and the skill says to treat a check that trips over `.colab/` as noise, not as a finding.
+**coClaudex's own bug (06).**
+- The target repo has a test that checks every Markdown link on disk. It flagged links inside coClaudex's raw run output in `.colab/runs/*.last.md`.
+- coClaudex now saves raw output as `.txt`, and the skill says to treat a check that trips over `.colab/` as noise, not as a finding.
 
 ## Files
 

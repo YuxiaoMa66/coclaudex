@@ -1,24 +1,24 @@
 ---
-name: colaudex
-description: Claude + Codex plan→execute→review→confirm pipeline. Claude (this session) writes the requirements and plan and does the final confirmation. For each slice the user picks A/B/C/D, meaning who executes and who reviews (Claude or Codex), plus a tier (light/standard/heavy/overkill). For complex code builds and paper writing. Use when the user says colaudex, asks for Claude and Codex to split execution and review, wants cross-model execution and review, or wants a planned multi-slice build with an independent reviewer.
+name: coclaudex
+description: Claude + Codex plan→execute→review→confirm pipeline. Claude (this session) writes the requirements and plan and does the final confirmation. For each slice the user picks A/B/C/D, meaning who executes and who reviews (Claude or Codex), plus a tier (light/standard/heavy/overkill). For complex code builds and paper writing. Use when the user says coclaudex, asks for Claude and Codex to split execution and review, wants cross-model execution and review, or wants a planned multi-slice build with an independent reviewer.
 ---
 
-# colaudex
+# coClaudex
 
 You (this session's model) are the **orchestrator**. You write the plan, dispatch executors and reviewers, confirm results, and commit. You do not execute slices yourself. Executors and reviewers never see this conversation; everything they need goes into files.
 
-Skill dir (below: `$SK`): the base directory shown when this skill loads. That is `~/.claude/skills/colaudex` for a symlink install, or a folder in the plugin cache for a plugin install. Codex runner: `python3 $SK/scripts/codex_run.py`.
+Skill dir (below: `$SK`): the base directory shown when this skill loads. That is `~/.claude/skills/coclaudex` for a symlink install, or a folder in the plugin cache for a plugin install. Codex runner: `python3 $SK/scripts/codex_run.py`.
 
 ## 0. Setup (once per project)
 
 1. The project must be a git repo with a clean working tree. If it is not a repo, offer to run `git init`. If the tree is dirty, ask the user whether to commit or stash first. Never discard their work.
 2. Create `.colab/` with the subdirectories `tasks/ runs/ reviews/ confirm/`. Add `.colab/` to `.git/info/exclude`, not to `.gitignore`.
 3. If any slice may use Codex, run `codex_run.py preflight`. If it fails, show the `detail` and offer to run every slice with Claude only.
-4. Claude executors and reviewers are the subagents `colaudex-*` shipped in this repo's `agents/`, which set model and effort in frontmatter. Installed as a plugin, their type names carry the plugin prefix: use `colaudex:<claude.agent>` when the bare name from config is not in your agent list. New or edited agent files can take a few minutes to load. If Agent says "Agent type not found", wait briefly and retry, or start a new session. Meanwhile, use `general-purpose` with the config's `model`, prepend the agent file's body to the prompt, and note that effort falls back to the session default.
+4. Claude executors and reviewers are the subagents `coclaudex-*` shipped in this repo's `agents/`, which set model and effort in frontmatter. Installed as a plugin, their type names carry the plugin prefix: use `coclaudex:<claude.agent>` when the bare name from config is not in your agent list. New or edited agent files can take a few minutes to load. If Agent says "Agent type not found", wait briefly and retry, or start a new session. Meanwhile, use `general-purpose` with the config's `model`, prepend the agent file's body to the prompt, and note that effort falls back to the session default.
 5. Handoffs and review prompts must carry the repo's **absolute path** (`{{REPO}}`), because Claude subagents do not start in the project directory.
 6. If `.colab/STATE.md` already exists, **resume**: read `PLAN.md` and `STATE.md`, run preflight again if Codex slices remain, and continue each slice from its recorded state. Two states need care:
    - **EXECUTING or REVIEWING with no `.result.json` for the current round**: first check that nothing is still running (`pgrep -f "<slice>.r<N>"`). If a run is still alive, wait for it. If it is dead, treat it as an INFRA_FAIL. Set its outputs aside as an aborted attempt (see 2.3). For a Codex executor, read the `thread_id` from the `thread.started` event in the `.jsonl` and retry once with `--resume <thread_id>`; that works in any round. Keep the half-edited working tree; never reset it.
-   - **CONFIRMING**: if `git log` already has the `colaudex(<slice>)` commit, just set ACCEPTED.
+   - **CONFIRMING**: if `git log` already has the `coclaudex(<slice>)` commit, just set ACCEPTED.
 
 ## 1. Plan
 
@@ -101,7 +101,7 @@ With two reviewers (heavy, overkill), prefix ids with the reviewer, `a-F1` and `
 - **Input fixes**: a VALID finding in material outside the executor's scope (plan data, a bibliography, fixtures) is yours to fix. Commit it separately, then set STATE's `base_sha` to the new HEAD, so the next review diff shows only the executor's work.
 
 Decision:
-- **No VALID blocker or major finding** → commit, **then** set ACCEPTED. Stage only the files in scope: `git add -- <scope files>`, then commit with the message `colaudex(<slice>): <goal>`, following the session's commit-attribution instructions. Put leftover minor findings into STATE's note column.
+- **No VALID blocker or major finding** → commit, **then** set ACCEPTED. Stage only the files in scope: `git add -- <scope files>`, then commit with the message `coclaudex(<slice>): <goal>`, following the session's commit-attribution instructions. Put leftover minor findings into STATE's note column.
 - **VALID blocker or major finding and round < max_rounds (2)** → **REWORK**. Put the VALID findings into the handoff's Rework section, then `round += 1`. Ask the user whether to keep the same executor or move up one tier (give your recommendation). Go to 2.3.
 - **round ≥ max_rounds, or verdict `reject` with VALID blockers** → **ESCALATED**. Summarize for the user and ask them to decide: re-plan the slice, accept as-is, take over manually, or drop it.
 

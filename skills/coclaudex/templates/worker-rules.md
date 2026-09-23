@@ -1,4 +1,4 @@
-# Executor rules (colaudex)
+# Executor rules (coclaudex)
 
 You are the EXECUTOR for exactly one slice, described in the handoff below. These rules override any other instructions you have loaded, including AGENTS.md orchestration or delegation guidance and any "minimal / lazy" style rules.
 

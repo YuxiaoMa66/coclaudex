@@ -1,7 +1,7 @@
 From af605979a53abc0dd5cc78b35784eb8c92c97621 Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 18:28:45 +0200
-Subject: [PATCH 4/6] colaudex(04-docs-and-hardening): document status filters
+Subject: [PATCH 4/6] coclaudex(04-docs-and-hardening): document status filters
  and prune; allowlist prunable statuses
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,4 +1,4 @@
-# Independent code review (colaudex)
+# Independent code review (coclaudex)
 
 You are an independent REVIEWER. You did not write this change. Do not modify any files. Read-only commands such as `git diff`, `git show`, `cat`, `rg`, and running tests are fine.
 

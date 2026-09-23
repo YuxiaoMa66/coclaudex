@@ -1,0 +1,33 @@
+{
+  "max_rounds": 2,
+  "codex": {
+    "allowed_models": ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"],
+    "stale_seconds": 600,
+    "max_seconds": 3600
+  },
+  "tiers": {
+    "light": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "medium"}, "claude": {"agent": "coclaudex-exec-sonnet-low", "model": "sonnet"}},
+      "review": {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "coclaudex-review-opus-medium", "model": "opus"}}
+    },
+    "standard": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "high"}, "claude": {"agent": "coclaudex-exec-sonnet-medium", "model": "sonnet"}},
+      "review": {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "coclaudex-review-opus-medium", "model": "opus"}}
+    },
+    "heavy": {
+      "exec":   {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "coclaudex-exec-opus-medium", "model": "opus"}},
+      "review": {"codex": {"model": "gpt-6-sol", "effort": "high"}, "claude": {"agent": "coclaudex-review-opus-high", "model": "opus"}},
+      "second_reviewer": true
+    },
+    "overkill": {
+      "exec":   {"codex": {"model": "gpt-6-astra", "effort": "medium"}, "claude": {"agent": "coclaudex-exec-fable-medium", "model": "fable"}},
+      "review": {"codex": {"model": "gpt-6-astra", "effort": "medium"}, "claude": {"agent": "coclaudex-review-fable-high", "model": "fable"}},
+      "second_reviewer": true
+    },
+    "test": {
+      "exec":   {"codex": {"model": "gpt-6-luna", "effort": "low"}, "claude": {"agent": "coclaudex-exec-sonnet-low", "model": "haiku"}},
+      "review": {"codex": {"model": "gpt-6-luna", "effort": "low"}, "claude": {"agent": "coclaudex-review-opus-medium", "model": "haiku"}}
+    }
+  },
+  "paper_exec": {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "coclaudex-exec-opus-medium", "model": "opus"}}
+}

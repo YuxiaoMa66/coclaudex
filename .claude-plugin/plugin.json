@@ -1,13 +1,13 @@
 {
-  "name": "colaudex",
+  "name": "coclaudex",
   "version": "1.3.0",
   "description": "One model executes, another reviews, Claude confirms every finding before committing. Claude + Codex, for code and papers.",
   "author": {
     "name": "YuxiaoMa66",
     "url": "https://github.com/YuxiaoMa66"
   },
-  "homepage": "https://yuxiaoma66.github.io/colaudex/",
-  "repository": "https://github.com/YuxiaoMa66/colaudex",
+  "homepage": "https://yuxiaoma66.github.io/coclaudex/",
+  "repository": "https://github.com/YuxiaoMa66/coclaudex",
   "license": "MIT",
   "keywords": ["codex", "code-review", "cross-model-review", "orchestration", "paper-writing"]
 }

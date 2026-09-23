@@ -1,7 +1,7 @@
 From 8844b774f51c4a4c8f53169f8f370327cd48d2ef Mon Sep 17 00:00:00 2001
 From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
 Date: Wed, 23 Sep 2026 18:56:43 +0200
-Subject: [PATCH 6/6] colaudex(06-read-job-guard): read_job rejects a
+Subject: [PATCH 6/6] coclaudex(06-read-job-guard): read_job rejects a
  non-string status so every command reports it cleanly
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

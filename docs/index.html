@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>colaudex</title>
+<title>coClaudex</title>
 <meta name="description" content="A Claude Code skill where one model executes, a different model reviews, and Claude confirms every finding before anything is committed.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="colaudex: one model builds, another checks, Claude decides">
+<meta property="og:title" content="coClaudex: one model builds, another checks, Claude decides">
 <meta property="og:description" content="Claude Code plugin for Claude and Codex. Every review finding is reproduced before anything is committed.">
-<meta property="og:url" content="https://yuxiaoma66.github.io/colaudex/">
-<meta property="og:image" content="https://yuxiaoma66.github.io/colaudex/assets/og.png">
+<meta property="og:url" content="https://yuxiaoma66.github.io/coclaudex/">
+<meta property="og:image" content="https://yuxiaoma66.github.io/coclaudex/assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://yuxiaoma66.github.io/colaudex/assets/og.png">
+<meta name="twitter:image" content="https://yuxiaoma66.github.io/coclaudex/assets/og.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <style>
 @font-face { font-family: "Geist"; src: url("https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -202,7 +202,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
 
 <nav aria-label="Primary">
   <div class="wrap">
-    <a class="brand" href="#top"><span class="mark" aria-hidden="true"></span>colaudex</a>
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true"></span>coClaudex</a>
     <div class="links">
       <a href="#how"><span class="en">How it works</span><span class="zh">原理</span></a>
       <a href="#combos"><span class="en">Combos</span><span class="zh">组合</span></a>
@@ -212,7 +212,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
     </div>
     <div class="tools">
       <button class="chip" id="lang" type="button" aria-label="Switch language"><i class="ph ph-translate" aria-hidden="true"></i><span class="en">中文</span><span class="zh">EN</span></button>
-      <a class="chip" href="https://github.com/YuxiaoMa66/colaudex" aria-label="GitHub repository"><i class="ph ph-github-logo" aria-hidden="true"></i>GitHub</a>
+      <a class="chip" href="https://github.com/YuxiaoMa66/coclaudex" aria-label="GitHub repository"><i class="ph ph-github-logo" aria-hidden="true"></i>GitHub</a>
     </div>
   </div>
 </nav>
@@ -229,7 +229,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
       </div>
     </div>
 
-    <figure class="flow" aria-label="The colaudex loop">
+    <figure class="flow" aria-label="The coClaudex loop">
       <ol>
         <li class="node"><i class="ph ph-list-checks" aria-hidden="true"></i><div><div class="t"><b><span class="en">Plan</span><span class="zh">规划</span></b><span class="who">Claude</span></div><small><span class="en">Requirements and slices, approved by you</span><span class="zh">需求和切片，由你批准</span></small></div></li>
         <li class="arrow" aria-hidden="true"><i class="ph ph-arrow-down"></i></li>
@@ -370,7 +370,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
       <div class="tile t3 reveal">
         <h3><span class="en">Read the whole trail</span><span class="zh">完整审计记录</span></h3>
         <p><span class="en">Plan, handoffs, reviewer JSON, every VALID or INVALID decision, and the patches.</span><span class="zh">计划、交接文件、审查 JSON、每一条成立或不成立的裁定，以及补丁。</span></p>
-        <a class="btn ghost" style="align-self:flex-start;margin-top:6px" href="https://github.com/YuxiaoMa66/colaudex/tree/main/examples/agy-mission-control"><span class="en">Open the example</span><span class="zh">查看示例</span><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+        <a class="btn ghost" style="align-self:flex-start;margin-top:6px" href="https://github.com/YuxiaoMa66/coclaudex/tree/main/examples/agy-mission-control"><span class="en">Open the example</span><span class="zh">查看示例</span><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
       </div>
     </div>
   </div>
@@ -380,7 +380,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
   <div class="wrap install">
     <div>
       <h2><span class="en">Install as a plugin</span><span class="zh">作为插件安装</span></h2>
-      <p class="intro"><span class="en">Two commands inside Claude Code, then restart it once. Then ask for colaudex in any git repository.</span><span class="zh">在 Claude Code 里输入两条命令，然后重启一次。之后在任意 git 仓库里让它使用 colaudex 即可。</span></p>
+      <p class="intro"><span class="en">Two commands inside Claude Code, then restart it once. Then ask for coClaudex in any git repository.</span><span class="zh">在 Claude Code 里输入两条命令，然后重启一次。之后在任意 git 仓库里让它使用 coClaudex 即可。</span></p>
       <ul class="req">
         <li><i class="ph ph-terminal" aria-hidden="true"></i><span><b>Claude Code</b><br><span class="en">runs the orchestrator and the Claude subagents</span><span class="zh">运行编排者和 Claude 子代理</span></span></li>
         <li><i class="ph ph-code" aria-hidden="true"></i><span><b>Codex CLI</b><br><span class="en">logged in, for combos B, C and D</span><span class="zh">已登录，用于 B、C、D 组合</span></span></li>
@@ -390,13 +390,13 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
     <div>
       <div class="codebox">
         <div class="codebar"><span>Claude Code</span><button class="copy" type="button" data-copy="install"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
-<pre id="install-code">/plugin marketplace add YuxiaoMa66/colaudex
-/plugin install colaudex@colaudex</pre>
+<pre id="install-code">/plugin marketplace add YuxiaoMa66/coclaudex
+/plugin install coclaudex@coclaudex</pre>
       </div>
       <div class="codebox">
         <div class="codebar"><span><span class="en">then, in your project</span><span class="zh">然后在你的项目里</span></span><button class="copy" type="button" data-copy="prompt"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
 <pre id="prompt-code"><span class="c"># example</span>
-colaudex: add rate limiting to the API.
+coclaudex: add rate limiting to the API.
 Plan it in slices and let me pick who writes and who reviews.</pre>
       </div>
     </div>
@@ -407,7 +407,7 @@ Plan it in slices and let me pick who writes and who reviews.</pre>
 <footer>
   <div class="wrap">
     <span><span class="en">MIT licensed. Independent project, not affiliated with Anthropic or OpenAI.</span><span class="zh">MIT 许可。独立项目，与 Anthropic、OpenAI 无关。</span></span>
-    <a href="https://github.com/YuxiaoMa66/colaudex">github.com/YuxiaoMa66/colaudex</a>
+    <a href="https://github.com/YuxiaoMa66/coclaudex">github.com/YuxiaoMa66/coclaudex</a>
   </div>
 </footer>
 
@@ -415,12 +415,12 @@ Plan it in slices and let me pick who writes and who reviews.</pre>
 (function () {
   var root = document.documentElement;
   var saved = null;
-  try { saved = localStorage.getItem("colaudex-lang"); } catch (e) {}
+  try { saved = localStorage.getItem("coclaudex-lang"); } catch (e) {}
   var lang = saved || ((navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh-CN" : "en");
   root.lang = lang;
   document.getElementById("lang").addEventListener("click", function () {
     root.lang = root.lang === "en" ? "zh-CN" : "en";
-    try { localStorage.setItem("colaudex-lang", root.lang); } catch (e) {}
+    try { localStorage.setItem("coclaudex-lang", root.lang); } catch (e) {}
   });
   document.querySelectorAll("[data-copy]").forEach(function (btn) {
     btn.addEventListener("click", function () {
