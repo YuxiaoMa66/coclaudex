@@ -22,19 +22,22 @@ FINDING_KEYS = ("id", "severity", "location", "evidence", "problem", "suggestion
 
 
 def pick(role, tier, kind):
-    m = CFG["paper_exec"]["codex"] if role == "exec" and kind == "paper" else CFG["tiers"][tier][role]["codex"]
+    paper = role == "exec" and kind == "paper" and tier != "test"  # test tier stays cheap even for paper
+    m = CFG["paper_exec"]["codex"] if paper else CFG["tiers"][tier][role]["codex"]
     if m["model"] not in CFG["codex"]["allowed_models"]:
         sys.exit(f"model {m['model']} not in allowed_models")
     return m
 
 
-def build_cmd(role, m, cwd, last, resume):
+def build_cmd(role, m, cwd, last, resume, kind="code"):
     cmd = ["codex", "exec", "-m", m["model"], "-c", f'model_reasoning_effort="{m["effort"]}"',
            "-c", 'approval_policy="never"', "--sandbox", "workspace-write" if role == "exec" else "read-only",
            "--disable", "multi_agent", "--disable", "memories", "--skip-git-repo-check",
            "-C", cwd, "--json", "-o", last]
     if role == "review":
         cmd += ["--output-schema", str(SCHEMA)]
+        if kind == "paper":  # citation checks need the web, whatever the user's config says
+            cmd += ["-c", 'web_search="live"']
     return cmd + (["resume", resume, "-"] if resume else ["-"])
 
 
@@ -121,7 +124,7 @@ def cmd_run(a, role):
     prompt = Path(a.prompt).read_text()
     if role == "exec":
         prompt = WORKER_RULES.read_text() + "\n" + prompt
-    rc, killed, secs = run(build_cmd(role, m, a.cwd, last, getattr(a, "resume", None)), prompt, jsonl, err)
+    rc, killed, secs = run(build_cmd(role, m, a.cwd, last, getattr(a, "resume", None), a.kind), prompt, jsonl, err)
     thread_id, usage, errors, denied = parse_events(jsonl)
     msg = Path(last).read_text() if Path(last).exists() else ""
     errtext = Path(err).read_text()

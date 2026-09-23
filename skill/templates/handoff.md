@@ -25,5 +25,5 @@ Repository: `{{REPO}}` (work only inside it; all paths below are relative to it)
 {{Name the skills to use, e.g. $latex. Otherwise write: none}}
 
 ## Rework (round {{N}} only; delete this section in round 1)
-The orchestrator confirmed these findings. Fix every one of them:
+Your previous round's changes are still uncommitted in the working tree; build on them, do not start over. The orchestrator confirmed these findings. Fix every one of them:
 - {{F1 [major] location — problem → required change}}
