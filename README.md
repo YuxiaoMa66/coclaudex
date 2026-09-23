@@ -102,7 +102,7 @@ python3 <skill dir>/scripts/codex_run.py preflight  # is Codex reachable?
 
 ## A real run
 
-Six slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control), a Python CLI with 64 tests, ending in [a pull request](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2). The full audit trail is in [`examples/agy-mission-control`](examples/agy-mission-control).
+Six slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control), a Python CLI with 64 tests, ending in [a merged pull request](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2). The full audit trail is in [`examples/agy-mission-control`](examples/agy-mission-control).
 
 - **Too lenient.** A Claude reviewer passed pytest-style tests as a style nit. CI runs `unittest` without pytest, so the 14 new tests would never have run. Confirmation caught it and sent the slice back.
 - **A miss.** A new `prune` command treated `cancel_failed` jobs as finished, although their worker may still be alive. Neither reviewer raised it; the orchestrator did.

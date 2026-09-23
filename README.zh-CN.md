@@ -102,7 +102,7 @@ python3 <skill 目录>/scripts/codex_run.py preflight  # Codex 是否可用
 
 ## 一次真实运行
 
-在 [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control)（一个带 64 个测试的 Python CLI）上跑了六个切片，最后提交了[一个 PR](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2)。完整审计记录见 [`examples/agy-mission-control`](examples/agy-mission-control)。
+在 [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control)（一个带 64 个测试的 Python CLI）上跑了六个切片，最后[合并进了主线](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2)。完整审计记录见 [`examples/agy-mission-control`](examples/agy-mission-control)。
 
 - **太宽松。** Claude 审查者把 pytest 写法的测试当成风格问题放过了。CI 用的是不装 pytest 的 `unittest`，14 个新测试根本不会运行。确认环节抓到后退回返工。
 - **漏网。** 新的 `prune` 命令把 `cancel_failed` 状态的 job 当成已结束，而它的进程可能还活着。两位审查者都没提，编排者提了。

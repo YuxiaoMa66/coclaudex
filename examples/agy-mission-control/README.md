@@ -1,6 +1,6 @@
-# Example: six slices on a real repository, merged as a pull request
+# Example: six slices on a real repository, merged upstream
 
-The target is [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control) v0.5.0, a Python CLI with 64 tests. The goal was job housekeeping. The run started from commit `0fc10c8`, and the result is [pull request #2](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2).
+The target is [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control) v0.5.0, a Python CLI with 64 tests. The goal was job housekeeping. The run started from commit `0fc10c8`, and the result was merged as [pull request #2](https://github.com/YuxiaoMa66/antigravity-mission-control/pull/2) after all 12 CI checks passed (Python 3.10, 3.12 and 3.14 included).
 
 This folder is the audit trail as colaudex left it. Only local paths were replaced with `<repo>` and `<tmp>`.
 
