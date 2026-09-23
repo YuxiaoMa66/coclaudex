@@ -60,7 +60,7 @@ The tier maps to models through `$SK/config.json`. Paper slices always execute w
 - **Codex**: run this with Bash, `run_in_background: true`:
   `python3 $SK/scripts/codex_run.py exec --tier <tier> --kind <kind> --prompt .colab/tasks/<slice>.md --out .colab/runs/<slice>.r<N> --cwd <repo>`
   (For round ≥2, add `--resume <codex_thread>` when the same Codex model executes.) The worker rules are prepended automatically. Save `thread_id` from the result into STATE.
-- **Claude**: call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config. Pass as the prompt the contents of `$SK/templates/worker-rules.md` followed by the contents of the handoff file, and set `run_in_background: true`. Save its final message to `.colab/runs/<slice>.r<N>.last.md`.
+- **Claude**: call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config. Pass as the prompt the contents of `$SK/templates/worker-rules.md` followed by the contents of the handoff file, and set `run_in_background: true`. Save its final message to `.colab/runs/<slice>.r<N>.last.md`. When it completes, also write `.colab/runs/<slice>.r<N>.result.json` as `{"role":"exec","backend":"claude","tier":…,"model":…,"seconds":<duration_ms/1000>,"tokens":<subagent_tokens>,"status":…}` from the completion's usage block, so `stats` covers Claude runs too.
 
 Wait for the completion notification. Do not poll.
 
@@ -79,7 +79,7 @@ Wait for the completion notification. Do not poll.
 1. Fill `$SK/templates/review-code.md` or `review-paper.md` (handoff path, base_sha, focus) → `.colab/reviews/<slice>.r<N>.prompt.md`.
 2. Run the reviewer:
 - **Codex**: run `python3 $SK/scripts/codex_run.py review --tier <tier> --prompt <that prompt> --out .colab/reviews/<slice>.r<N> --cwd <repo>`. The review lands in `…r<N>.json`. If `INVALID_REVIEW` or `INFRA_FAIL`, retry once, then fall back to a Claude reviewer at the same tier.
-- **Claude**: call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config. The prompt is the filled review prompt plus: "Write the JSON to `.colab/reviews/<slice>.r<N>.json`, then run `python3 $SK/scripts/codex_run.py validate <that file>` and fix it until valid." It is a fresh agent. Never give it the executor's transcript.
+- **Claude**: call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config. The prompt is the filled review prompt plus: "Write the JSON to `.colab/reviews/<slice>.r<N>.json`, then run `python3 $SK/scripts/codex_run.py validate <that file>` and fix it until valid." It is a fresh agent. Never give it the executor's transcript. When it completes, write `…r<N>.result.json` the same way as for a Claude executor, with `"role":"review"` and `"status"` = the verdict.
 - **Heavy tier**: run a second reviewer with the same backend, in parallel, with a different focus. Code: "correctness and edge cases" vs "design, scope and maintainability". Paper: "argument and evidence" vs "citations and consistency". Use the output paths `…r<N>a` / `…r<N>b`.
 
 ### 2.6 Confirm (state CONFIRMING). This is your job; never delegate it.
@@ -98,7 +98,7 @@ Decision:
 
 ## 3. Finish
 
-When every slice is ACCEPTED (or the user has decided on the escalated ones), run the project-level verification. Report per slice: combo, tier, rounds, and final verdict. Also give where the time or rework went. Do not delete `.colab/`; it is the audit trail.
+When every slice is ACCEPTED (or the user has decided on the escalated ones), run the project-level verification. Report per slice: combo, tier, rounds, and final verdict. Also give where the time or rework went: run `python3 $SK/scripts/codex_run.py stats` and include its table. (These rows are the data for recalibrating the tier defaults later.) Do not delete `.colab/`; it is the audit trail.
 
 ## Rules
 
