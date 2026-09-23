@@ -63,7 +63,7 @@ The tier maps to models through `$SK/config.json`. Paper slices on light or stan
 - **Codex**: run this with Bash, `run_in_background: true`:
   `python3 $SK/scripts/codex_run.py exec --tier <tier> --kind <kind> --prompt .colab/tasks/<slice>.md --out .colab/runs/<slice>.r<N> --cwd <repo>`
   (For round ≥2, or a retry after a crash, add `--resume <codex_thread>` when the same Codex model executes.) The worker rules are prepended automatically. Save `thread_id` from the result into STATE.
-- **Claude**: write `$SK/templates/worker-rules.md` followed by the handoff to `.colab/tasks/<slice>.prompt.full.md`, then call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config, `run_in_background: true`, and a short prompt telling it to read that file in full and follow it as its instructions. Save its final message to `.colab/runs/<slice>.r<N>.last.md`. When it completes, also write `.colab/runs/<slice>.r<N>.result.json` as `{"role":"exec","backend":"claude","tier":…,"model":…,"seconds":<duration_ms/1000>,"tokens":<subagent_tokens>,"status":…}` from the completion's usage block, so `stats` covers Claude runs too.
+- **Claude**: write `$SK/templates/worker-rules.md` followed by the handoff to `.colab/tasks/<slice>.prompt.full.md`, then call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config, `run_in_background: true`, and a short prompt telling it to read that file in full and follow it as its instructions. Save its final message to `.colab/runs/<slice>.r<N>.last.txt`. When it completes, also write `.colab/runs/<slice>.r<N>.result.json` as `{"role":"exec","backend":"claude","tier":…,"model":…,"seconds":<duration_ms/1000>,"tokens":<subagent_tokens>,"status":…}` from the completion's usage block, so `stats` covers Claude runs too.
 
 Wait for the completion notification. Do not poll.
 
@@ -78,6 +78,7 @@ Wait for the completion notification. Do not poll.
 - **Scope check (always)**: compare `git diff --name-only <base_sha>` plus untracked files against "May modify". Any file outside the scope is a blocker for confirmation. Build and cache artifacts from test runs, such as `__pycache__/` or `.pytest_cache/`, are not violations. Add them to `.git/info/exclude` so they stop showing up.
 - Reviewer `sandbox_denied: true` is expected: a read-only reviewer often can't run tests. It is not an error.
 - Also check that the executor made no commits: `git log <base_sha>..HEAD` must be empty.
+- `.colab/` is git-excluded but still on disk. A project check that walks the file tree (link checkers, linters, doc tests) can trip over it. If a failure points into `.colab/`, move that file aside, rerun, and treat it as noise, not a finding. Raw model output is saved as `.txt` for this reason.
 
 ### 2.5 Review (state REVIEWING)
 

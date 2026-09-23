@@ -8,7 +8,7 @@
   codex_run.py stats [COLAB_DIR]    # one row per run from all *.result.json (Codex and Claude)
   codex_run.py describe --combo A|B|C|D [--kind code|paper]   # per tier: the exact models that combo would use
 
-Writes PREFIX.jsonl / .err / .last.md / .result.json (review also PREFIX.json) and prints the result JSON.
+Writes PREFIX.jsonl / .err / .last.txt / .result.json (review also PREFIX.json) and prints the result JSON.
 Exit code 0 = Codex finished (check "status"/"error_class"); 1 = infra failure or invalid review.
 """
 import argparse, json, os, re, subprocess, sys, time
@@ -120,7 +120,7 @@ def load_json_loose(text):
 def cmd_run(a, role):
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    jsonl, err, last = f"{out}.jsonl", f"{out}.err", f"{out}.last.md"
+    jsonl, err, last = f"{out}.jsonl", f"{out}.err", f"{out}.last.txt"
     Path(last).unlink(missing_ok=True)
     m = pick(role, a.tier, a.kind)
     prompt = Path(a.prompt).read_text()
