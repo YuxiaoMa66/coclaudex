@@ -1,12 +1,20 @@
-# colaudex
+<p align="center"><img src="docs/assets/og.png" width="720" alt="colaudex"></p>
 
-![colaudex](docs/assets/og.png)
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3f444d" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/Claude_Code-tested_2.1.267-d9480f" alt="Claude Code tested 2.1.267">
+  <img src="https://img.shields.io/badge/Codex_CLI-tested_0.156.1-5b616e" alt="Codex CLI tested 0.156.1">
+  <a href="https://github.com/YuxiaoMa66/colaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/colaudex?label=plugin&color=16181d" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
+</p>
 
 **一个模型执行，另一个审查，Claude 拍板。**
 
 这是一个 [Claude Code](https://claude.com/claude-code) skill：把工作拆成小切片，由 Claude 或 Codex 执行，再由*另一个*模型审查；每条审查意见都要 Claude 亲自复现，确认后才提交。代码和论文都适用。
 
-[项目主页](https://yuxiaoma66.github.io/colaudex/) · [English](README.md) · [更新记录](CHANGELOG.md)
+[项目主页](https://yuxiaoma66.github.io/colaudex/) · [更新记录](CHANGELOG.md) · [真实运行示例](examples/agy-mission-control)
 
 ```mermaid
 flowchart LR

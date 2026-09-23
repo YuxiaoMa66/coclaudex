@@ -1,12 +1,20 @@
-# colaudex
+<p align="center"><img src="docs/assets/og.png" width="720" alt="colaudex: one model builds, another checks, Claude decides"></p>
 
-![colaudex: one model builds, another checks, Claude decides](docs/assets/og.png)
+<p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9%2B-3f444d" alt="Python 3.9+">
+  <img src="https://img.shields.io/badge/Claude_Code-tested_2.1.267-d9480f" alt="Claude Code tested 2.1.267">
+  <img src="https://img.shields.io/badge/Codex_CLI-tested_0.156.1-5b616e" alt="Codex CLI tested 0.156.1">
+  <a href="https://github.com/YuxiaoMa66/colaudex/releases"><img src="https://img.shields.io/github/v/release/YuxiaoMa66/colaudex?label=plugin&color=16181d" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b9188" alt="MIT License"></a>
+</p>
 
 **One model builds. Another checks. Claude decides.**
 
 A [Claude Code](https://claude.com/claude-code) skill that splits work into slices, has Claude or Codex execute each one, has the *other* model review it, and then makes Claude reproduce every review finding before anything is committed. It works for code and for papers.
 
-[Project page](https://yuxiaoma66.github.io/colaudex/) · [中文说明](README.zh-CN.md) · [Changelog](CHANGELOG.md)
+[Project page](https://yuxiaoma66.github.io/colaudex/) · [Changelog](CHANGELOG.md) · [Real-run example](examples/agy-mission-control)
 
 ```mermaid
 flowchart LR
