@@ -26,7 +26,7 @@ Write `.colab/PLAN.md`:
 - **Requirements**, and a project-level definition of done.
 - **Slices**, numbered `01-name`, `02-name`, and so on. Each slice needs: kind (`code` or `paper`), goal, scope (the files it may modify), steps, acceptance (checkable criteria plus verification commands), dependencies, and the Codex skills to use (or none).
 
-Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. For a bug that is a pattern (a missing check, an unsafe call), grep every place the pattern occurs before writing the handoff, and put the fix at the shared entry point they all go through. Listing call sites one by one leads to rework round after round. Before writing acceptance commands, check how the project itself runs its checks (CI config, CONTRIBUTING, Makefile) and use the same runner and test style. Say it in the handoff's Context, so an executor does not write pytest tests for a project whose CI runs unittest. For a slice that deletes, overwrites or migrates data, define what qualifies as an **allowlist** of known-safe states ("done, failed, canceled"), never as "everything except running". A denylist silently includes states you forgot, such as a cancel that failed while its worker is still alive. Give the reviewer the focus "what could this remove that it should not". Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed.
+Aim for each slice to be about half an hour of focused work, verifiable on its own, with a tight file scope. For a bug that is a pattern (a missing check, an unsafe call), grep every place the pattern occurs before writing the handoff, and put the fix at the shared entry point they all go through. Listing call sites one by one leads to rework round after round. Before writing acceptance commands, check how the project itself runs its checks (CI config, CONTRIBUTING, Makefile) and use the same runner and test style. Say it in the handoff's Context, so an executor does not write pytest tests for a project whose CI runs unittest. For a slice that deletes, overwrites or migrates data, define what qualifies as an **allowlist** of known-safe states ("done, failed, canceled"), never as "everything except running". A denylist silently includes states you forgot, such as a cancel that failed while its worker is still alive. Give the reviewer the focus "what could this remove that it should not". Paper work must live in git as Markdown or LaTeX, split into one file per section, so it can be diffed. Treat every factual claim the handoff makes about the repo the same way (which script generates which file, which command covers which check): verify it before sending, because the executor will trust it.
 
 Show the plan and **wait for the user to approve it** before executing anything.
 
@@ -35,7 +35,9 @@ Show the plan and **wait for the user to approve it** before executing anything.
 `STATE.md` holds a single table with one row per slice:
 `| slice | kind | combo | tier | state | round | base_sha | codex_thread | note |`
 Write the new state to `STATE.md` **before** every transition.
-States: `PLANNED → EXECUTING → REVIEWING → CONFIRMING → ACCEPTED`, plus `REWORK`, `BLOCKED`, `ESCALATED`, and `INFRA_FAIL`.
+States: `PLANNED → EXECUTING → REVIEWING → CONFIRMING → ACCEPTED`, plus `REWORK`, `BLOCKED`, `ESCALATED`, `INFRA_FAIL`, and `PAUSED`.
+
+If the user dismisses a question or says to pause, stop: set `PAUSED` and write in the note column what is done, what is pending and the next step, so a later "continue" (in this or a new session) resumes from STATE alone. Do not pick a default for a dismissed question; on resume, restate the pending choice unless the user already said to go ahead.
 
 ### 2.1 Choose combo and tier
 
@@ -72,6 +74,7 @@ Wait for the completion notification. Do not poll.
 ### 2.4 Check the execution result
 
 - Codex `error_class: INFRA_FAIL`: retry once. If it fails again, set INFRA_FAIL and ask the user: wait and retry, or switch this role to Claude at the same tier.
+- Checks that talk to a live service (acceptance suites, model APIs, deploy probes) fail for reasons outside the code. Before rerunning, keep the evidence (state dirs, logs, `--keep-state`-style flags) and read the underlying error. Classify it: our code, a limit we set (fix it, but first measure the real latency distribution, e.g. ten timed calls, not one), or the external service (timeouts, 503) which you report with the evidence and rerun later. Never rerun blindly until green.
 - `STATUS: BLOCKED`: set BLOCKED and bring the reason back to the plan. Fix the plan or the handoff with the user; do not retry blindly. The re-run is an aborted attempt (see 2.3), in the same round.
 - `sandbox_denied: true`: ask the user whether to widen access. Never widen it silently. Exception: if the executor's own work is verified and only pre-existing tests failed because the sandbox blocked them (for example `ps` or signals: "Operation not permitted"), do not widen anything. Treat it as PARTIAL and rerun the full suite yourself at confirmation.
 - `STATUS: PARTIAL` or `UNKNOWN`: still go to review, and note it.
@@ -108,6 +111,8 @@ Decision:
 - **round ≥ max_rounds, or verdict `reject` with VALID blockers** → **ESCALATED**. Summarize for the user and ask them to decide: re-plan the slice, accept as-is, take over manually, or drop it.
 
 ## 3. Finish
+
+Before finishing, fill every measured-result marker (`*_PENDING`) from your own measurements, and recount any numbers the docs state (test totals, file counts) against the final tree; later slices make earlier counts stale.
 
 When every slice is ACCEPTED (or the user has decided on the escalated ones), run the project-level verification: every check the project's CI runs (read the workflow files), not only the tests, for example bundle-sync, compile, packaging. Run each on the interpreter or runtime versions CI uses when they are installed. Report per slice: combo, tier, rounds, and final verdict. For heavy or overkill slices, report VALID findings per reviewer (a only, b only, both). Also give where the time or rework went: run `python3 $SK/scripts/codex_run.py stats` and include its table. (These rows are the data for recalibrating the tier defaults later.) Do not delete `.colab/`; it is the audit trail.
 

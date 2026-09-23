@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2 — 2026-09-24
+Lessons from cutting the agy-mission-control 0.6.0 release:
+- Executors never state measured results they did not measure; they leave a `*_PENDING` marker. Finish fills markers from the orchestrator's measurements and recounts stated numbers (a later slice had made "103 tests" stale).
+- Failing checks against live services: keep the evidence, read the underlying error, and classify it (our code / a limit we set / the external service) before rerunning. Measure latency before changing a timeout (AGY model listing: ~1.3 s usually, ~62 s in 2 of 10 calls; one failure was a Google 503).
+- Verify every factual claim a handoff makes about the repo, not only how CI runs tests (a handoff wrongly said a render script produced a file).
+- New `PAUSED` state with resume notes; a dismissed question means stop and wait, not a default.
+
 ## 1.3.1 — 2026-09-23
 - Renamed colaudex → coClaudex (repo `YuxiaoMa66/coclaudex`, plugin/skill `coclaudex`, agents `coclaudex-*`, commits `coclaudex(<slice>)`). Reinstall: `/plugin marketplace add YuxiaoMa66/coclaudex`, `/plugin install coclaudex@coclaudex`.
 - Lessons from the agy-mission-control run:
