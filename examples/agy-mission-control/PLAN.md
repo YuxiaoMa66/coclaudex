@@ -1,0 +1,20 @@
+# PLAN — antigravity-mission-control: job housekeeping (colaudex public example)
+
+Repo: YuxiaoMa66/antigravity-mission-control @ v0.5.0 (branch colaudex-demo in a local clone). Baseline: `python3 -m pytest -q` → 64 passed.
+
+## Requirements
+1. Duration strings ("100s", "5m", "1h") are parsed in one shared place.
+2. `agy-mc status` without a job id can be narrowed: newest N jobs, and/or by state.
+3. `agy-mc prune` removes old finished job directories safely. It must never remove a job that is starting, running or canceling, and must only delete inside the job root.
+Done = all three shipped with tests, full suite green, `--help` text for untouched commands unchanged.
+
+## Slices
+### 01-parse-duration (code, combo C, standard)
+Extract the duration parsing in `cmd_wait` into `common.parse_duration`; `wait` keeps identical behavior and error messages. Scope: common.py, jobs.py, tests/test_duration.py (new).
+
+### 02-status-filter (code, combo C, standard) — deps: none
+`status [--limit N] [--state S ...]` for the list form; default output unchanged. Scope: cli.py, jobs.py, tests/test_status_filter.py (new).
+
+### 03-prune (code, combo B; user chose Claude opus medium to execute, one Codex sol medium reviewer) — deps: 01
+`prune --older-than DURATION [--yes]`: dry run by default; deletes only terminal jobs whose finished_at is older than the cutoff; JSON report of removed / kept / skipped. Risky (deletes data) → heavy: Claude opus executes, two Codex reviewers.
+Scope: jobstore.py, jobs.py, cli.py, tests/test_prune.py (new).

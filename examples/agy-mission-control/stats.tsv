@@ -1,0 +1,11 @@
+run	role	backend	tier	model	secs	in_tok	cached	out_tok	outcome
+01-parse-duration.r1	exec	codex	standard	gpt-6-luna/high	82	173441	143872	2188	PARTIAL
+01-parse-duration.r1	review	claude	standard	opus/medium	62.7	15205	-	-	pass
+01-parse-duration.r2	exec	codex	standard	gpt-6-luna/high	64	343387	299520	3489	PARTIAL
+01-parse-duration.r2	review	claude	standard	opus/medium	59.2	16097	-	-	pass
+02-status-filter.r1	exec	codex	standard	gpt-6-luna/high	138	360216	321792	3958	PARTIAL
+02-status-filter.r1	review	claude	standard	opus/medium	64.6	17888	-	-	pass
+03-prune.r1	exec	claude	heavy	opus/medium	121.1	80834	-	-	DONE
+03-prune.r1	review	codex	standard	gpt-6-sol/medium	66	130641	86912	2457	fix
+03-prune.r2	exec	claude	heavy	opus/medium	119.4	73084	-	-	DONE
+03-prune.r2	review	codex	standard	gpt-6-sol/medium	78	288817	234240	3104	fix

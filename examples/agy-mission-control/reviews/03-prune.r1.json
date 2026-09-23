@@ -1,0 +1,22 @@
+{
+  "verdict": "fix",
+  "summary": "The change is within the permitted files, and the CLI and selection logic largely match the handoff. I could not verify the tests: this read-only sandbox has no writable temporary directory. The full discovery command found 85 tests but failed for that environment reason.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "location": "antigravity_mission_control/jobs.py:503",
+      "evidence": "The code calls `_prune_reason(job, cutoff)`, checks `_real_job_dir(root, name)`, then calls `shutil.rmtree(root / name)` at line 508 using the path again.",
+      "problem": "The lock protects the original job's lock file, not the directory name. If that directory is replaced between the final check and `rmtree`, prune can delete a different, unfinished job at the same path.",
+      "suggestion": "Tie deletion to the directory verified under the lock, and refuse deletion if its identity changes. Add a test that swaps the directory after the final metadata check."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "location": "antigravity_mission_control/jobs.py:500",
+      "evidence": "`with job_lock(name)` runs before the second `_real_job_dir(root, name)` check at line 504; `job_lock` opens `job_dir(job_id) / \"job.lock\"` with `os.O_CREAT`.",
+      "problem": "If the entry becomes a symlink after selection, acquiring the lock follows it and can create `job.lock` in its target outside the job root. The later check cannot undo that write.",
+      "suggestion": "Open and verify the job directory without following symlinks before opening its lock file, and keep that verified directory identity through deletion."
+    }
+  ]
+}

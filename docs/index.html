@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>colaudex</title>
 <meta name="description" content="A Claude Code skill where one model executes, a different model reviews, and Claude confirms every finding before anything is committed.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="colaudex: one model builds, another checks, Claude decides">
+<meta property="og:description" content="Claude Code plugin for Claude and Codex. Every review finding is reproduced before anything is committed.">
+<meta property="og:url" content="https://yuxiaoma66.github.io/colaudex/">
+<meta property="og:image" content="https://yuxiaoma66.github.io/colaudex/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://yuxiaoma66.github.io/colaudex/assets/og.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <style>
 @font-face { font-family: "Geist"; src: url("https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -200,7 +207,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
       <a href="#how"><span class="en">How it works</span><span class="zh">原理</span></a>
       <a href="#combos"><span class="en">Combos</span><span class="zh">组合</span></a>
       <a href="#tiers"><span class="en">Tiers</span><span class="zh">档位</span></a>
-      <a href="#results"><span class="en">Test results</span><span class="zh">测试结果</span></a>
+      <a href="#results"><span class="en">Real run</span><span class="zh">真实运行</span></a>
       <a href="#install"><span class="en">Install</span><span class="zh">安装</span></a>
     </div>
     <div class="tools">
@@ -321,46 +328,48 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
         </tbody>
       </table>
     </div>
-    <p class="note"><span class="en">Paper slices execute with a fixed stronger model (Codex sol or Claude opus) on every tier except test.</span><span class="zh">论文切片除测试档外，一律用更强的固定模型执行（Codex sol 或 Claude opus）。</span></p>
+    <p class="note"><span class="en">Execution and review can sit on different tiers, for example opus writes and sol reviews. Paper slices execute with a fixed stronger model on every tier except test.</span><span class="zh">执行和审查可以选不同档位，比如 opus 写、sol 审。论文切片除测试档外，一律用更强的固定模型执行。</span></p>
   </div>
 </section>
 
 <section id="results" class="matrix-band">
   <div class="wrap">
-    <h2><span class="en">What broke when we tried to break it</span><span class="zh">故意搞破坏时，发现了什么</span></h2>
-    <p class="intro"><span class="en">A fault-injection run on a small Python project and a paper section with a planted citation error, all on the cheapest tier.</span><span class="zh">用一个小型 Python 项目做故障注入，再用一节埋了引用错误的论文测试，全部使用最便宜的档位。</span></p>
+    <h2><span class="en">One real run, both kinds of reviewer error</span><span class="zh">一次真实运行，两种审查失误都出现了</span></h2>
+    <p class="intro"><span class="en">Three slices on antigravity-mission-control, a Python CLI with 64 tests. The full audit trail is public.</span><span class="zh">在 antigravity-mission-control（一个带 64 个测试的 Python CLI）上跑了三个切片，完整审计记录公开可查。</span></p>
     <div class="bento">
       <div class="tile t1 reveal">
         <h3><span class="en">Every run is metered</span><span class="zh">每次运行都有计量</span></h3>
-        <p><span class="en">codex_run.py stats, from the simulation. Real output, trimmed.</span><span class="zh">模拟运行里 codex_run.py stats 的真实输出，有删节。</span></p>
-<pre class="term"><span class="d">run                    role    backend tier model          secs in_tok  cached  outcome</span>
-01-top-n.r1            exec    codex   test gpt-6-luna/low 26   90626   77824   DONE
-02-cli-top.r1.blocked  exec    claude  test haiku/low      28.2 41437   -       <span class="a">BLOCKED</span>
-02-cli-top.r2          review  codex   test gpt-6-luna/low 24   70002   43520   pass
-03-stopwords.r2        exec    codex   test gpt-6-luna/low 24   168317  155904  DONE
-04-json.r1.crashed     exec    codex   test gpt-6-luna/low -    -       -       <span class="a">INFRA_FAIL</span>
-04-json.r1             exec    codex   test gpt-6-luna/low 22   144896  136704  DONE</pre>
+        <p><span class="en">codex_run.py stats from that run, trimmed. About 14 minutes of agent time in total.</span><span class="zh">这次运行的 codex_run.py stats 输出，有删节。代理总耗时约 14 分钟。</span></p>
+<pre class="term"><span class="d">run                   role    backend model            secs  outcome</span>
+01-parse-duration.r1  exec    codex   gpt-6-luna/high  82    PARTIAL
+01-parse-duration.r1  review  claude  opus/medium      62.7  pass   <span class="a">&lt;- missed</span>
+01-parse-duration.r2  exec    codex   gpt-6-luna/high  64    PARTIAL
+02-status-filter.r1   review  claude  opus/medium      64.6  pass
+03-prune.r1           exec    claude  opus/medium      121.1 DONE
+03-prune.r1           review  codex   gpt-6-sol/medium 66    <span class="a">fix</span>
+03-prune.r2           review  codex   gpt-6-sol/medium 78    <span class="a">fix</span>  <span class="d">&lt;- over-strict</span></pre>
       </div>
       <div class="tile t2 reveal">
-        <span class="big">89%</span>
-        <h3><span class="en">of Codex executor input was cached</span><span class="zh">的 Codex 执行输入命中缓存</span></h3>
-        <p><span class="en">About 10k uncached tokens per call, so trimming fixed overhead was not worth it.</span><span class="zh">每次调用未命中缓存的约 1 万 token，削减固定开销不划算。</span></p>
+        <span class="big">89</span>
+        <h3><span class="en">tests passing, 25 of them new</span><span class="zh">个测试通过，其中 25 个是新增的</span></h3>
+        <p><span class="en">Three commits, each confirmed by rerunning the suite and the CI checks locally.</span><span class="zh">三个提交，每个都在本地重跑全套测试和 CI 检查后才确认。</span></p>
       </div>
       <div class="tile t3 reveal">
-        <h3><span class="en">Cheap reviewers passed a crash</span><span class="zh">便宜的审查者放过了一个崩溃</span></h3>
-        <p><span class="en"><code>--top -1</code> raised a traceback. The reviewer said pass; confirmation reproduced it and sent the slice back for rework.</span><span class="zh"><code>--top -1</code> 直接抛出 traceback。审查者给了通过，确认环节复现后把切片退回返工。</span></p>
+        <h3><span class="en">Too lenient: tests CI would never run</span><span class="zh">太宽松：CI 根本不会运行的测试</span></h3>
+        <p><span class="en">The reviewer called pytest-style tests a style nit. CI runs unittest without pytest, so 14 new tests would silently never run. Confirmation caught it.</span><span class="zh">审查者把 pytest 写法的测试当成风格问题。CI 用的是不装 pytest 的 unittest，14 个新测试会悄悄不运行。确认环节抓到了它。</span></p>
       </div>
       <div class="tile t4 reveal">
-        <h3><span class="en">Killed mid-run, resumed cold</span><span class="zh">中途被杀，冷启动续跑</span></h3>
-        <p><span class="en">A fresh session with only STATE.md found the half-edited slice, resumed the Codex thread, and finished it.</span><span class="zh">一个只有 STATE.md 的新会话找到了改了一半的切片，续接 Codex 线程并完成了它。</span></p>
+        <h3><span class="en">A miss on a delete command</span><span class="zh">删除命令里的漏网之鱼</span></h3>
+        <p><span class="en">A job in cancel_failed may still have a live worker, yet prune treated it as finished. Neither reviewer raised it; the orchestrator did.</span><span class="zh">cancel_failed 状态的 job 可能还有活着的进程，prune 却把它当成已结束。两位审查者都没提，编排者提了。</span></p>
+      </div>
+      <div class="tile t4 reveal">
+        <h3><span class="en">Too strict: three findings downgraded</span><span class="zh">太严格：三条意见被降级</span></h3>
+        <p><span class="en">Round 2 raised symlink races rated blocker. Checked against the threat model, a private 0700 job root, they became minor follow-ups, with reasons on file.</span><span class="zh">第 2 轮提出的软链接竞态被标成 blocker。对照威胁模型（0700 的私有目录）核实后降为 minor，理由都记录在案。</span></p>
       </div>
       <div class="tile t3 reveal">
-        <h3><span class="en">A planted wrong venue</span><span class="zh">埋下的错误会议名</span></h3>
-        <p><span class="en">Codex with web search caught it and a second misattributed citation. A Haiku reviewer passed without searching, until the template required "Citations verified online: k/n".</span><span class="zh">带联网搜索的 Codex 抓到了它，还发现了另一处误引。Haiku 审查者没搜索就给了通过，直到模板要求写明"已联网核实 k/n"。</span></p>
-      </div>
-      <div class="tile t4 reveal">
-        <h3><span class="en">BLOCKED means the plan was wrong</span><span class="zh">BLOCKED 说明计划有问题</span></h3>
-        <p><span class="en">Given a CLI task but only core.py in scope, the executor stopped instead of editing cli.py. The plan was fixed, not the rules.</span><span class="zh">要改 CLI 却只允许改 core.py，执行者停了下来，没有去动 cli.py。修正的是计划，不是规则。</span></p>
+        <h3><span class="en">Read the whole trail</span><span class="zh">完整审计记录</span></h3>
+        <p><span class="en">Plan, handoffs, reviewer JSON, every VALID or INVALID decision, and the patches.</span><span class="zh">计划、交接文件、审查 JSON、每一条成立或不成立的裁定，以及补丁。</span></p>
+        <a class="btn ghost" style="align-self:flex-start;margin-top:6px" href="https://github.com/YuxiaoMa66/colaudex/tree/main/examples/agy-mission-control"><span class="en">Open the example</span><span class="zh">查看示例</span><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
       </div>
     </div>
   </div>
@@ -369,8 +378,8 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
 <section id="install">
   <div class="wrap install">
     <div>
-      <h2><span class="en">Install in two symlinks</span><span class="zh">两条软链接完成安装</span></h2>
-      <p class="intro"><span class="en">Edits in the clone are live. Then ask Claude Code for colaudex in any git repository.</span><span class="zh">克隆目录里的修改即时生效。之后在任意 git 仓库里让 Claude Code 使用 colaudex 即可。</span></p>
+      <h2><span class="en">Install as a plugin</span><span class="zh">作为插件安装</span></h2>
+      <p class="intro"><span class="en">Two commands inside Claude Code, then restart it once. Then ask for colaudex in any git repository.</span><span class="zh">在 Claude Code 里输入两条命令，然后重启一次。之后在任意 git 仓库里让它使用 colaudex 即可。</span></p>
       <ul class="req">
         <li><i class="ph ph-terminal" aria-hidden="true"></i><span><b>Claude Code</b><br><span class="en">runs the orchestrator and the Claude subagents</span><span class="zh">运行编排者和 Claude 子代理</span></span></li>
         <li><i class="ph ph-code" aria-hidden="true"></i><span><b>Codex CLI</b><br><span class="en">logged in, for combos B, C and D</span><span class="zh">已登录，用于 B、C、D 组合</span></span></li>
@@ -379,19 +388,15 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
     </div>
     <div>
       <div class="codebox">
-        <div class="codebar"><span>shell</span><button class="copy" type="button" data-copy="install"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
-<pre id="install-code">git clone https://github.com/YuxiaoMa66/colaudex.git
-cd colaudex
-ln -s "$PWD/skill" ~/.claude/skills/colaudex
-for f in agents/colaudex-*.md; do
-  ln -s "$PWD/$f" ~/.claude/agents/
-done</pre>
+        <div class="codebar"><span>Claude Code</span><button class="copy" type="button" data-copy="install"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
+<pre id="install-code">/plugin marketplace add YuxiaoMa66/colaudex
+/plugin install colaudex@colaudex</pre>
       </div>
       <div class="codebox">
-        <div class="codebar"><span>Claude Code</span><button class="copy" type="button" data-copy="prompt"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
-<pre id="prompt-code"><span class="c"># in your project</span>
+        <div class="codebar"><span><span class="en">then, in your project</span><span class="zh">然后在你的项目里</span></span><button class="copy" type="button" data-copy="prompt"><i class="ph ph-copy" aria-hidden="true"></i><span class="en">Copy</span><span class="zh">复制</span></button></div>
+<pre id="prompt-code"><span class="c"># example</span>
 colaudex: add rate limiting to the API.
-Plan it in slices, Codex executes, Claude reviews.</pre>
+Plan it in slices and let me pick who writes and who reviews.</pre>
       </div>
     </div>
   </div>
@@ -400,7 +405,7 @@ Plan it in slices, Codex executes, Claude reviews.</pre>
 
 <footer>
   <div class="wrap">
-    <span><span class="en">MIT licensed. The audit trail stays in your repo under .colab/.</span><span class="zh">MIT 许可。审计记录保存在你仓库的 .colab/ 目录。</span></span>
+    <span><span class="en">MIT licensed. Independent project, not affiliated with Anthropic or OpenAI.</span><span class="zh">MIT 许可。独立项目，与 Anthropic、OpenAI 无关。</span></span>
     <a href="https://github.com/YuxiaoMa66/colaudex">github.com/YuxiaoMa66/colaudex</a>
   </div>
 </footer>

@@ -1,5 +1,7 @@
 # colaudex
 
+![colaudex](docs/assets/og.png)
+
 **一个模型执行，另一个审查，Claude 拍板。**
 
 这是一个 [Claude Code](https://claude.com/claude-code) skill：把工作拆成小切片，由 Claude 或 Codex 执行，再由*另一个*模型审查；每条审查意见都要 Claude 亲自复现，确认后才提交。代码和论文都适用。
@@ -46,20 +48,31 @@ flowchart LR
 | 重 heavy | sol, medium | astra, medium（两位） | opus, medium | opus, high（两位） |
 | 测试 test | luna, low | luna, low | haiku | haiku |
 
-重档会增加一位侧重点不同的审查者。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skill/config.json` 中修改。
+重档会增加一位侧重点不同的审查者。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/colaudex/config.json` 中修改。
 
 ## 安装
 
 需要 Claude Code、git 和 Python 3。B、C、D 组合还需要已登录的 Codex CLI。
 
+**作为插件安装**（推荐）。在 Claude Code 里输入：
+
+```text
+/plugin marketplace add YuxiaoMa66/colaudex
+/plugin install colaudex@colaudex
+```
+
+装好后重启一次 Claude Code。以后用 `/plugin marketplace update colaudex` 更新。
+
+**从克隆目录安装**（想改源码时用）。软链接让修改即时生效：
+
 ```bash
 git clone https://github.com/YuxiaoMa66/colaudex.git
 cd colaudex
-ln -s "$PWD/skill" ~/.claude/skills/colaudex
+ln -s "$PWD/skills/colaudex" ~/.claude/skills/colaudex
 for f in agents/colaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 ```
 
-软链接让克隆目录里的修改即时生效。新的 agent 文件在已运行的会话里可能要过几分钟才能加载。
+两种方式二选一，不要同时使用。
 
 ## 使用
 
@@ -72,13 +85,22 @@ colaudex：给 API 加限流。拆成切片，Codex 执行，Claude 审查。
 运行中常用的命令：
 
 ```bash
-python3 ~/.claude/skills/colaudex/scripts/codex_run.py stats      # 每次运行的耗时和 token
-python3 ~/.claude/skills/colaudex/scripts/codex_run.py preflight  # Codex 是否可用
+python3 <skill 目录>/scripts/codex_run.py stats      # 每次运行的耗时和 token
+python3 <skill 目录>/scripts/codex_run.py preflight  # Codex 是否可用
 ```
 
 `.colab/` 通过 `.git/info/exclude` 排除在 git 之外，作为审计记录保留：计划、状态、交接文件、原始运行记录、审查和确认结果。
 
-## 测试中发现了什么
+## 一次真实运行
+
+在 [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control)（一个带 64 个测试的 Python CLI）上跑了三个切片，完整审计记录见 [`examples/agy-mission-control`](examples/agy-mission-control)。
+
+- **太宽松。** Claude 审查者把 pytest 写法的测试当成风格问题放过了。CI 用的是不装 pytest 的 `unittest`，14 个新测试根本不会运行。确认环节抓到后退回返工。
+- **漏网。** 新的 `prune` 命令把 `cancel_failed` 状态的 job 当成已结束，而它的进程可能还活着。两位审查者都没提，编排者提了。
+- **太严格。** 第 2 轮 Codex 审查者把软链接竞态标成 blocker。对照威胁模型核实后降为 minor 后续项，理由记录在案。
+- 最终 89 个测试通过，其中 25 个是新增的，代理总耗时约 14 分钟。
+
+## 早期测试
 
 来自一次故障注入演练（测试档）和两次论文测试：
 
@@ -91,11 +113,12 @@ python3 ~/.claude/skills/colaudex/scripts/codex_run.py preflight  # Codex 是否
 ## 目录结构
 
 ```text
-skill/     SKILL.md、config.json、scripts/codex_run.py、templates/、schemas/
-agents/    Claude 执行者和审查者子代理（模型和 effort 写在 frontmatter）
-docs/      项目主页（GitHub Pages）
+skills/colaudex/   SKILL.md、config.json、scripts/codex_run.py、templates/、schemas/
+agents/            Claude 执行者和审查者子代理（模型和 effort 写在 frontmatter）
+.claude-plugin/    插件和插件来源清单
+docs/              项目主页（GitHub Pages）
 ```
 
 ## 许可
 
-MIT
+MIT。独立项目，与 Anthropic、OpenAI 无关。

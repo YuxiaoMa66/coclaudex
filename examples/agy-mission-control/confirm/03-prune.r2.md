@@ -1,0 +1,7 @@
+Reviewer r2 (codex gpt-6-sol medium): fix. F1 blocker, F2 blocker, F3 major. Could not run tests (read-only sandbox).
+Orchestrator: unittest discover 89 OK; sync_skill_bundle clean; compileall OK; real CLI dry run on an empty root OK. Round-1 findings O1, F2, F1 fixed (live-pid check, fd-based O_NOFOLLOW lock, rename-then-verify) and each has a test.
+Threat model: JOB_ROOT is the user's private state (0700 dirs); only the same user can create or swap entries in it.
+F1 [blocker→minor] VALID in principle — selection reads and refreshes by path, so an entry swapped for a symlink after lstat is followed. Requires a same-user process racing inside the private job root; existing `agy-mc status` (list_jobs: JOB_ROOT.glob("*/job.json") + refresh_job) already has the same exposure, so prune adds no new surface.
+F2 [blocker→minor] VALID in principle — race between verify and rmtree. shutil.rmtree.avoids_symlink_attacks = True here: a top-level symlink is refused (lstat + O_NOFOLLOW + samestat). What remains needs a same-user process to put another real directory at a fresh `.prune-<id>-<uuid4>` name in that window, or to replace JOB_ROOT itself.
+F3 [major→minor] VALID as hardening, not a spec violation — the handoff defined finished as every status except starting/running/canceling; no other status exists in the codebase. Follow-up: allowlist the terminal statuses instead.
+Decision: ACCEPTED at round 2 (no VALID blocker/major after confirmation). F1–F3 recorded as follow-ups.

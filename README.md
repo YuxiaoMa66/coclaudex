@@ -1,5 +1,7 @@
 # colaudex
 
+![colaudex: one model builds, another checks, Claude decides](docs/assets/og.png)
+
 **One model builds. Another checks. Claude decides.**
 
 A [Claude Code](https://claude.com/claude-code) skill that splits work into slices, has Claude or Codex execute each one, has the *other* model review it, and then makes Claude reproduce every review finding before anything is committed. It works for code and for papers.
@@ -46,20 +48,31 @@ flowchart LR
 | heavy | sol, medium | astra, medium (×2) | opus, medium | opus, high (×2) |
 | test | luna, low | luna, low | haiku | haiku |
 
-Heavy adds a second reviewer with a different focus. Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skill/config.json` to change the mapping.
+Heavy adds a second reviewer with a different focus. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/colaudex/config.json` to change the mapping.
 
 ## Install
 
 Requires Claude Code, git and Python 3. Codex CLI (logged in) is needed for combos B, C and D.
 
+**As a plugin** (recommended). In Claude Code:
+
+```text
+/plugin marketplace add YuxiaoMa66/colaudex
+/plugin install colaudex@colaudex
+```
+
+Restart Claude Code once afterwards. Update later with `/plugin marketplace update colaudex`.
+
+**From a clone** (to hack on it). Symlinks keep your edits live:
+
 ```bash
 git clone https://github.com/YuxiaoMa66/colaudex.git
 cd colaudex
-ln -s "$PWD/skill" ~/.claude/skills/colaudex
+ln -s "$PWD/skills/colaudex" ~/.claude/skills/colaudex
 for f in agents/colaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 ```
 
-The symlinks keep edits in the clone live. New agent files can take a few minutes to load in a running session.
+Use one method, not both.
 
 ## Use
 
@@ -72,13 +85,22 @@ colaudex: add rate limiting to the API. Plan it in slices, Codex executes, Claud
 Useful commands while a run is going:
 
 ```bash
-python3 ~/.claude/skills/colaudex/scripts/codex_run.py stats      # time and tokens per run
-python3 ~/.claude/skills/colaudex/scripts/codex_run.py preflight  # is Codex reachable?
+python3 <skill dir>/scripts/codex_run.py stats      # time and tokens per run
+python3 <skill dir>/scripts/codex_run.py preflight  # is Codex reachable?
 ```
 
 `.colab/` is excluded from git through `.git/info/exclude` and kept as the audit trail: plan, state, handoffs, raw runs, reviews and confirmations.
 
-## What the tests showed
+## A real run
+
+Three slices on [antigravity-mission-control](https://github.com/YuxiaoMa66/antigravity-mission-control), a Python CLI with 64 tests. The full audit trail is in [`examples/agy-mission-control`](examples/agy-mission-control).
+
+- **Too lenient.** A Claude reviewer passed pytest-style tests as a style nit. CI runs `unittest` without pytest, so the 14 new tests would never have run. Confirmation caught it and sent the slice back.
+- **A miss.** A new `prune` command treated `cancel_failed` jobs as finished, although their worker may still be alive. Neither reviewer raised it; the orchestrator did.
+- **Too strict.** In round 2 a Codex reviewer rated symlink races as blockers. Checked against the threat model, they became minor follow-ups, and the reasons are on file.
+- End state: 89 tests pass, 25 of them new, after about 14 minutes of agent time.
+
+## Earlier tests
 
 From a fault-injection run (`test` tier) and two paper runs:
 
@@ -91,11 +113,12 @@ From a fault-injection run (`test` tier) and two paper runs:
 ## Layout
 
 ```text
-skill/     SKILL.md, config.json, scripts/codex_run.py, templates/, schemas/
-agents/    Claude executor and reviewer subagents (model and effort in frontmatter)
-docs/      project page (GitHub Pages)
+skills/colaudex/   SKILL.md, config.json, scripts/codex_run.py, templates/, schemas/
+agents/            Claude executor and reviewer subagents (model and effort in frontmatter)
+.claude-plugin/    plugin and marketplace manifests
+docs/              project page (GitHub Pages)
 ```
 
 ## License
 
-MIT
+MIT. Independent project, not affiliated with Anthropic or OpenAI.

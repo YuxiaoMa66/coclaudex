@@ -1,0 +1,30 @@
+{
+  "verdict": "fix",
+  "summary": "The change stays within the permitted files, and the live-PID checks and Python 3.10 syntax look sound. The prune tests and full suite could not be verified: this read-only sandbox has no usable temporary directory; the full suite discovered 89 tests. Static review found two deletion safety races and one status check gap.",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "blocker",
+      "location": "antigravity_mission_control/jobs.py:541",
+      "evidence": "`_real_job_dir(root, name)` uses `lstat`, but lines 546 and 554 then call path-based `read_job(name)` and `refresh_job(job)`. `refresh_job` opens `JOB_ROOT/name/job.lock` and can write job metadata.",
+      "problem": "If the entry becomes a symlink after `lstat`, selection can follow it and create or modify files outside JOB_ROOT, even during a dry run. The new no-follow lock protects only the later deletion phase.",
+      "suggestion": "Use directory-relative, no-follow opens throughout selection and refresh; do not call the path-based refresh on an entry that can change into a symlink."
+    },
+    {
+      "id": "F2",
+      "severity": "blocker",
+      "location": "antigravity_mission_control/jobs.py:530",
+      "evidence": "After verifying `hidden` at lines 519–521, `_prune_one` exits `_locked_job_dir` and calls `shutil.rmtree(root / hidden)` at line 531.",
+      "problem": "The verified directory, or the path to JOB_ROOT, can be replaced before `rmtree` resolves it. A different directory, including an unfinished job or a directory outside the job root, can then be removed. Rename-then-verify does not close this final path race.",
+      "suggestion": "Keep deletion anchored to the verified directory and job-root descriptors, with no path lookup that can switch to another directory after verification."
+    },
+    {
+      "id": "F3",
+      "severity": "major",
+      "location": "antigravity_mission_control/jobs.py:455",
+      "evidence": "`_prune_reason` excludes only `starting`, `running`, `canceling`, and live PIDs; any other status with an old `finished_at` returns `None`.",
+      "problem": "An unrecognized or future unfinished status is treated as finished and can be deleted, contrary to the finished-jobs-only requirement.",
+      "suggestion": "Accept only known terminal statuses as prune candidates; skip every other status."
+    }
+  ]
+}

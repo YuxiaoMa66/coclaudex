@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "colaudex",
+  "description": "Cross-model execute / review / confirm pipeline for Claude Code and Codex.",
+  "owner": {
+    "name": "YuxiaoMa66",
+    "url": "https://github.com/YuxiaoMa66"
+  },
+  "plugins": [
+    {
+      "name": "colaudex",
+      "description": "One model executes, another reviews, Claude confirms every finding before committing.",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}

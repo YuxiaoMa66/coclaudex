@@ -1,0 +1,483 @@
+From ee8e1246fce2b0e58edae1411ada8e81caf035ad Mon Sep 17 00:00:00 2001
+From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
+Date: Wed, 23 Sep 2026 17:17:12 +0200
+Subject: [PATCH 3/3] colaudex(03-prune): prune --older-than for old finished
+ job directories
+
+Dry run by default; --yes removes only finished jobs with no live process,
+through an O_NOFOLLOW directory fd lock and rename-then-verify.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ antigravity_mission_control/cli.py  |  20 ++-
+ antigravity_mission_control/jobs.py | 155 +++++++++++++++++++
+ tests/test_prune.py                 | 228 ++++++++++++++++++++++++++++
+ 3 files changed, 401 insertions(+), 2 deletions(-)
+ create mode 100644 tests/test_prune.py
+
+diff --git a/antigravity_mission_control/cli.py b/antigravity_mission_control/cli.py
+index 2333308..779d58c 100644
+--- a/antigravity_mission_control/cli.py
++++ b/antigravity_mission_control/cli.py
+@@ -15,8 +15,8 @@ if __package__ in (None, ""):
+     __package__ = "antigravity_mission_control"
+ 
+ from .approvals import POLICY_NAMES, canonical_policy_name, cmd_approve, cmd_policy
+-from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, run_capture
+-from .jobs import cmd_cancel, cmd_continue, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
++from .common import AGY_BIN, STATE_ROOT, VERSION, command_data, parse_duration, run_capture
++from .jobs import cmd_cancel, cmd_continue, cmd_prune, cmd_result, cmd_run, cmd_status, cmd_wait, cmd_worker
+ from .jobstore import JOB_EXIT_CODES
+ from .routing import ROLES, STRATEGY_PATTERNS, cmd_models, cmd_select
+ from .skill import HOSTS, cmd_skill, default_skill_target, skill_marker
+@@ -210,6 +210,12 @@ def build_parser() -> argparse.ArgumentParser:
+     continue_parser.add_argument("--timeout-seconds", type=int, default=600)
+     continue_parser.set_defaults(func=cmd_continue)
+ 
++    prune_parser = subparsers.add_parser("prune", help="Report, and with --yes delete, old finished job directories")
++    prune_parser.add_argument("--older-than", dest="older_than", type=positive_duration, required=True,
++                              help="Minimum age since finished_at, such as 12h or 7d")
++    prune_parser.add_argument("--yes", action="store_true", help="Delete the candidates; default is a dry run")
++    prune_parser.set_defaults(func=cmd_prune)
++
+     worker_parser = subparsers.add_parser("_worker", help=argparse.SUPPRESS)
+     worker_parser.add_argument("job_id")
+     worker_parser.set_defaults(func=cmd_worker)
+@@ -226,6 +232,16 @@ def positive_int(value: str) -> int:
+     return number
+ 
+ 
++def positive_duration(value: str) -> float:
++    try:
++        seconds = parse_duration(value)
++    except ValueError as exc:
++        raise argparse.ArgumentTypeError("must be a positive duration such as 30m, 12h or 7d") from exc
++    if seconds <= 0:
++        raise argparse.ArgumentTypeError("must be a positive duration such as 30m, 12h or 7d")
++    return seconds
++
++
+ def main() -> int:
+     parser = build_parser()
+     args = parser.parse_args()
+diff --git a/antigravity_mission_control/jobs.py b/antigravity_mission_control/jobs.py
+index 7cd0fe0..5b7abf4 100644
+--- a/antigravity_mission_control/jobs.py
++++ b/antigravity_mission_control/jobs.py
+@@ -3,17 +3,23 @@
+ from __future__ import annotations
+ 
+ import argparse
++import contextlib
++import fcntl
+ import json
+ import os
+ import re
++import shutil
+ import signal
++import stat
+ import subprocess
+ import sys
+ import tempfile
+ import time
+ import uuid
++from datetime import datetime, timedelta, timezone
+ from pathlib import Path
+ 
++from . import jobstore
+ from .approvals import load_approval, validate_approval_binding
+ from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
+ from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
+@@ -429,6 +435,155 @@ def cmd_status(args: argparse.Namespace) -> int:
+     return 0
+ 
+ 
++UNFINISHED_STATUSES = {"starting", "running", "canceling"}
++
++
++def _finished_at(job: dict) -> datetime | None:
++    text = job.get("finished_at")
++    if not isinstance(text, str):
++        return None
++    try:
++        moment = datetime.fromisoformat(text[:-1] + "+00:00" if text.endswith("Z") else text)
++    except ValueError:
++        return None
++    return moment if moment.tzinfo is not None else None
++
++
++def _prune_reason(job: dict, cutoff: datetime) -> str | None:
++    """Why a job must be kept, or None when it is a finished job older than the cutoff."""
++    # A live pid means the worker may still be running whatever the status says (e.g. cancel_failed).
++    if job.get("status") in UNFINISHED_STATUSES or pid_alive(job.get("pid")) or pid_alive(job.get("launcher_pid")):
++        return "unfinished"
++    finished = _finished_at(job)
++    if finished is None:
++        return "missing or unparseable finished_at"
++    if finished >= cutoff:
++        return "too recent"
++    return None
++
++
++def _real_job_dir(root: Path, name: str) -> bool:
++    try:
++        return stat.S_ISDIR(os.lstat(root / name).st_mode)
++    except OSError:
++        return False
++
++
++def _read_job_at(dir_fd: int) -> dict:
++    fd = os.open("job.json", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dir_fd)
++    with os.fdopen(fd, encoding="utf-8") as handle:
++        try:
++            job = json.load(handle)
++        except json.JSONDecodeError as exc:
++            raise RuntimeError(f"Job metadata is corrupt: {exc}") from exc
++    if not isinstance(job, dict):
++        raise RuntimeError("Job metadata must be an object")
++    return job
++
++
++@contextlib.contextmanager
++def _locked_job_dir(root_fd: int, name: str):
++    """Open JOB_ROOT/name without following symlinks and hold the same flock as jobstore.job_lock.
++
++    Everything is opened relative to directory fds, so a directory swapped for a symlink after
++    selection makes the open fail instead of creating or reading files outside JOB_ROOT.
++    """
++    dir_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
++    try:
++        lock_fd = os.open("job.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
++        try:
++            fcntl.flock(lock_fd, fcntl.LOCK_EX)
++            yield dir_fd
++        finally:
++            os.close(lock_fd)
++    finally:
++        os.close(dir_fd)
++
++
++def _prune_one(root: Path, root_fd: int, name: str, cutoff: datetime) -> str | None:
++    """Delete one candidate under its lock; return why it was kept, or None once removed."""
++    with _locked_job_dir(root_fd, name) as dir_fd:
++        # Re-check under the lock: a job may have been continued or replaced since selection.
++        job = _read_job_at(dir_fd)
++        if job.get("job_id") != name:
++            return "job_id does not match directory name"
++        reason = _prune_reason(job, cutoff)
++        if reason:
++            return reason
++        # Rename-then-verify: rename never follows a symlink, and the renamed entry must be the
++        # very directory we locked before anything is deleted.
++        hidden = f".prune-{name}-{uuid.uuid4().hex}"
++        os.rename(name, hidden, src_dir_fd=root_fd, dst_dir_fd=root_fd)
++        locked = os.fstat(dir_fd)
++        try:
++            moved = os.stat(hidden, dir_fd=root_fd, follow_symlinks=False)
++            same = (stat.S_ISDIR(moved.st_mode) and (moved.st_dev, moved.st_ino) == (locked.st_dev, locked.st_ino)
++                    and _read_job_at(dir_fd).get("job_id") == name)
++        except (OSError, RuntimeError):
++            same = False
++        if not same:
++            try:
++                os.rename(hidden, name, src_dir_fd=root_fd, dst_dir_fd=root_fd)
++            except OSError as exc:
++                return f"directory changed during prune; left as {hidden}: {exc}"
++            return "directory changed during prune"
++    # rmtree refuses a symlinked top directory and never follows links inside it.
++    shutil.rmtree(root / hidden)
++    return None
++
++
++def cmd_prune(args: argparse.Namespace) -> int:
++    root = jobstore.JOB_ROOT
++    cutoff = datetime.now(timezone.utc) - timedelta(seconds=args.older_than)
++    candidates, removed, skipped = [], [], []
++    names = sorted(os.listdir(root)) if root.is_dir() else []
++    for name in names:
++        if not _real_job_dir(root, name):
++            skipped.append({"entry": name, "reason": "not a real directory"})
++            continue
++        try:
++            jobstore.validate_job_id(name)
++            job = read_job(name)
++        except (OSError, RuntimeError) as exc:
++            skipped.append({"entry": name, "reason": str(exc)})
++            continue
++        if job.get("job_id") != name:
++            skipped.append({"entry": name, "reason": "job_id does not match directory name"})
++            continue
++        try:
++            job = refresh_job(job)
++        except (OSError, RuntimeError) as exc:
++            skipped.append({"job_id": name, "reason": str(exc)})
++            continue
++        reason = _prune_reason(job, cutoff)
++        if reason:
++            skipped.append({"job_id": name, "reason": reason})
++        else:
++            candidates.append(name)
++    if args.yes and candidates:
++        root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
++        try:
++            for name in candidates:
++                try:
++                    reason = _prune_one(root, root_fd, name, cutoff)
++                except (OSError, RuntimeError) as exc:
++                    reason = str(exc)
++                if reason:
++                    skipped.append({"job_id": name, "reason": reason})
++                else:
++                    removed.append(name)
++        finally:
++            os.close(root_fd)
++    print(json.dumps({
++        "dry_run": not args.yes,
++        "older_than_seconds": float(args.older_than),
++        "removed": removed,
++        "would_remove": [] if args.yes else candidates,
++        "skipped": skipped,
++    }, ensure_ascii=False, indent=2))
++    return 0
++
++
+ def cmd_result(args: argparse.Namespace) -> int:
+     print(json.dumps(job_result(args.job_id), ensure_ascii=False, indent=2))
+     return 0
+diff --git a/tests/test_prune.py b/tests/test_prune.py
+new file mode 100644
+index 0000000..5d27121
+--- /dev/null
++++ b/tests/test_prune.py
+@@ -0,0 +1,228 @@
++import argparse
++import contextlib
++from datetime import datetime, timedelta, timezone
++import io
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++from unittest import mock
++
++from antigravity_mission_control import jobs, jobstore
++
++ROOT = Path(__file__).resolve().parents[1]
++CLI = ROOT / "scripts" / "agy_delegate.py"
++
++
++def ago(**delta):
++    return (datetime.now(timezone.utc) - timedelta(**delta)).isoformat()
++
++
++class PruneTests(unittest.TestCase):
++    def setUp(self):
++        temp = tempfile.TemporaryDirectory()
++        self.addCleanup(temp.cleanup)
++        self.base = Path(temp.name)
++        self.root = self.base / "jobs"
++        self.root.mkdir()
++        patcher = mock.patch.object(jobstore, "JOB_ROOT", self.root)
++        patcher.start()
++        self.addCleanup(patcher.stop)
++        self.add("old-done", status="done", finished_at=ago(days=10))
++        self.add("old-error", status="error", finished_at=ago(days=10).replace("+00:00", "Z"))
++        self.add("recent-done", status="done", finished_at=ago(hours=1))
++        self.add("no-finish", status="canceled")
++        self.add("bad-finish", status="done", finished_at="yesterday")
++        # A live pid keeps refresh_job from resolving these as crashed.
++        for status in ("starting", "running", "canceling"):
++            self.add(f"live-{status}", status=status, pid=os.getpid(), finished_at=ago(days=100))
++        self.add("mismatch", job_id="someone-else", status="done", finished_at=ago(days=10))
++        (self.root / "no-json").mkdir()
++        (self.root / "corrupt").mkdir()
++        (self.root / "corrupt" / "job.json").write_text("{nope")
++        (self.root / "stray-file").write_text("x")
++        self.outside = self.base / "outside"
++        self.outside.mkdir()
++        (self.outside / "job.json").write_text(json.dumps(
++            {"job_id": "linked-job", "status": "done", "finished_at": ago(days=10)}))
++        (self.root / "linked-job").symlink_to(self.outside, target_is_directory=True)
++
++    def add(self, name, **job):
++        job.setdefault("job_id", name)
++        (self.root / name).mkdir()
++        (self.root / name / "job.json").write_text(json.dumps(job))
++        (self.root / name / "result.json").write_text("{}")
++
++    def prune(self, older_than="7d", yes=False):
++        out = io.StringIO()
++        seconds = jobs.parse_duration(older_than)
++        with contextlib.redirect_stdout(out):
++            code = jobs.cmd_prune(argparse.Namespace(older_than=seconds, yes=yes))
++        self.assertEqual(code, 0)
++        return json.loads(out.getvalue())
++
++    def entries(self):
++        return sorted(os.listdir(self.root))
++
++    def test_dry_run_deletes_nothing(self):
++        before = self.entries()
++        payload = self.prune()
++        self.assertTrue(payload["dry_run"])
++        self.assertEqual(payload["older_than_seconds"], 7 * 86400.0)
++        self.assertEqual(sorted(payload["would_remove"]), ["old-done", "old-error"])
++        self.assertEqual(payload["removed"], [])
++        self.assertEqual(self.entries(), before)
++
++    def test_yes_deletes_only_old_finished_jobs(self):
++        payload = self.prune(yes=True)
++        self.assertFalse(payload["dry_run"])
++        self.assertEqual(sorted(payload["removed"]), ["old-done", "old-error"])
++        self.assertEqual(payload["would_remove"], [])
++        self.assertEqual(self.entries(), sorted([
++            "recent-done", "no-finish", "bad-finish", "live-starting", "live-running", "live-canceling",
++            "mismatch", "no-json", "corrupt", "stray-file", "linked-job"]))
++
++    def test_unfinished_jobs_never_deleted_however_old(self):
++        payload = self.prune(older_than="1ms", yes=True)
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        for status in ("starting", "running", "canceling"):
++            self.assertTrue((self.root / f"live-{status}").is_dir())
++            self.assertEqual(reasons[f"live-{status}"], "unfinished")
++
++    def test_recent_and_missing_finished_at_kept(self):
++        payload = self.prune(yes=True)
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        self.assertEqual(reasons["recent-done"], "too recent")
++        self.assertEqual(reasons["no-finish"], "missing or unparseable finished_at")
++        self.assertEqual(reasons["bad-finish"], "missing or unparseable finished_at")
++        for name in ("recent-done", "no-finish", "bad-finish"):
++            self.assertTrue((self.root / name).is_dir())
++
++    def test_mismatched_missing_and_corrupt_metadata_kept(self):
++        payload = self.prune(yes=True)
++        entries = {s.get("entry") for s in payload["skipped"]}
++        self.assertTrue({"mismatch", "no-json", "corrupt", "stray-file"} <= entries)
++        for name in ("mismatch", "no-json", "corrupt"):
++            self.assertTrue((self.root / name).is_dir())
++
++    def test_symlink_is_not_followed_or_deleted(self):
++        payload = self.prune(older_than="1ms", yes=True)
++        self.assertIn({"entry": "linked-job", "reason": "not a real directory"}, payload["skipped"])
++        self.assertNotIn("linked-job", payload["removed"])
++        self.assertTrue((self.root / "linked-job").is_symlink())
++        self.assertTrue((self.outside / "job.json").is_file())
++
++    def test_recheck_under_lock_keeps_job_that_became_unfinished(self):
++        real_lock = jobs._locked_job_dir
++
++        @contextlib.contextmanager
++        def lock_then_restart(root_fd, name):
++            with real_lock(root_fd, name) as dir_fd:
++                if name == "old-done":
++                    (self.root / name / "job.json").write_text(json.dumps(
++                        {"job_id": name, "status": "running", "pid": os.getpid()}))
++                yield dir_fd
++
++        with mock.patch.object(jobs, "_locked_job_dir", lock_then_restart):
++            payload = self.prune(yes=True)
++        self.assertEqual(payload["removed"], ["old-error"])
++        self.assertTrue((self.root / "old-done").is_dir())
++
++    def test_cancel_failed_job_with_live_pid_kept(self):
++        self.add("stuck", status="cancel_failed", pid=os.getpid(), finished_at=ago(days=100))
++        self.add("stuck-launcher", status="done", launcher_pid=os.getpid(), finished_at=ago(days=100))
++        payload = self.prune(older_than="1ms", yes=True)
++        reasons = {s.get("job_id"): s["reason"] for s in payload["skipped"]}
++        for name in ("stuck", "stuck-launcher"):
++            self.assertEqual(reasons[name], "unfinished")
++            self.assertTrue((self.root / name).is_dir())
++
++    def outside_decoy(self, name):
++        decoy = self.base / f"decoy-{name}"
++        decoy.mkdir()
++        (decoy / "job.json").write_text(json.dumps(
++            {"job_id": name, "status": "done", "finished_at": ago(days=10)}))
++        return decoy
++
++    def test_candidate_swapped_for_symlink_before_lock(self):
++        decoy = self.outside_decoy("old-done")
++        real_refresh = jobs.refresh_job
++
++        def refresh_then_swap(job):
++            job = real_refresh(job)
++            if job.get("job_id") == "old-done":
++                (self.root / "old-done").rename(self.base / "moved-old-done")
++                (self.root / "old-done").symlink_to(decoy, target_is_directory=True)
++            return job
++
++        with mock.patch.object(jobs, "refresh_job", refresh_then_swap):
++            payload = self.prune(yes=True)
++        self.assertEqual(payload["removed"], ["old-error"])
++        self.assertIn("old-done", {s.get("job_id") for s in payload["skipped"]})
++        self.assertEqual(sorted(os.listdir(decoy)), ["job.json"])
++        self.assertTrue((self.root / "old-done").is_symlink())
++        self.assertTrue((self.base / "moved-old-done" / "job.json").is_file())
++        self.assertFalse(any(n.startswith(".prune-") for n in self.entries()))
++
++    def test_candidate_swapped_for_symlink_after_lock(self):
++        decoy = self.outside_decoy("old-done")
++        real_reason = jobs._prune_reason
++        calls = []
++
++        def reason_then_swap(job, cutoff):
++            calls.append(job.get("job_id"))
++            if job.get("job_id") == "old-done" and calls.count("old-done") == 2:
++                (self.root / "old-done").rename(self.base / "moved-old-done")
++                (self.root / "old-done").symlink_to(decoy, target_is_directory=True)
++            return real_reason(job, cutoff)
++
++        with mock.patch.object(jobs, "_prune_reason", reason_then_swap):
++            payload = self.prune(yes=True)
++        self.assertEqual(payload["removed"], ["old-error"])
++        self.assertIn({"job_id": "old-done", "reason": "directory changed during prune"}, payload["skipped"])
++        self.assertEqual(sorted(os.listdir(decoy)), ["job.json"])
++        self.assertTrue((self.root / "old-done").is_symlink())
++        self.assertEqual(sorted(os.listdir(self.base / "moved-old-done")), ["job.json", "job.lock", "result.json"])
++        self.assertFalse(any(n.startswith(".prune-") for n in self.entries()))
++
++    def test_leftover_prune_entry_reported_as_skipped(self):
++        (self.root / ".prune-old-done-abc").mkdir()
++        payload = self.prune(yes=True)
++        self.assertIn(".prune-old-done-abc", {s.get("entry") for s in payload["skipped"]})
++        self.assertTrue((self.root / ".prune-old-done-abc").is_dir())
++
++    def test_missing_job_root_is_empty_report(self):
++        with mock.patch.object(jobstore, "JOB_ROOT", self.base / "absent"):
++            payload = self.prune(yes=True)
++        self.assertEqual((payload["removed"], payload["skipped"]), ([], []))
++
++
++class PruneCliTests(unittest.TestCase):
++    def cli(self, *args):
++        with tempfile.TemporaryDirectory() as tmp:
++            env = {**os.environ, "AGY_MC_JOB_ROOT": tmp}
++            return subprocess.run([sys.executable, str(CLI), "prune", *args], cwd=ROOT, env=env,
++                                  text=True, capture_output=True, check=False)
++
++    def test_invalid_duration_is_usage_error(self):
++        for value in ("0s", "-1d", "7", "soon", "0.0m"):
++            with self.subTest(value=value):
++                result = self.cli(f"--older-than={value}")
++                self.assertEqual(result.returncode, 2, result.stdout)
++                self.assertIn("must be a positive duration", result.stderr)
++
++    def test_older_than_is_required(self):
++        self.assertEqual(self.cli().returncode, 2)
++
++    def test_cli_dry_run_prints_report(self):
++        result = self.cli("--older-than", "1d")
++        self.assertEqual(result.returncode, 0, result.stderr)
++        self.assertEqual(json.loads(result.stdout), {
++            "dry_run": True, "older_than_seconds": 86400.0, "removed": [], "would_remove": [], "skipped": []})
++
++
++if __name__ == "__main__":
++    unittest.main()
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,0 +1,122 @@
+From 843b73c696bcea76918740251ef1aca357665311 Mon Sep 17 00:00:00 2001
+From: Ma Yu Xiao <91479062+YuxiaoMa66@users.noreply.github.com>
+Date: Wed, 23 Sep 2026 16:59:16 +0200
+Subject: [PATCH 1/3] colaudex(01-parse-duration): shared parse_duration for
+ wait --timeout
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ antigravity_mission_control/common.py |  9 ++++++
+ antigravity_mission_control/jobs.py   |  9 +++---
+ tests/test_duration.py                | 44 +++++++++++++++++++++++++++
+ 3 files changed, 57 insertions(+), 5 deletions(-)
+ create mode 100644 tests/test_duration.py
+
+diff --git a/antigravity_mission_control/common.py b/antigravity_mission_control/common.py
+index 4985cf4..6eca97f 100644
+--- a/antigravity_mission_control/common.py
++++ b/antigravity_mission_control/common.py
+@@ -6,6 +6,7 @@ from datetime import datetime, timezone
+ import hashlib
+ import json
+ import os
++import re
+ import subprocess
+ import tempfile
+ from pathlib import Path
+@@ -15,6 +16,14 @@ from . import __version__
+ VERSION = __version__
+ 
+ 
++def parse_duration(text: str) -> float:
++    match = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m|h|d)", text)
++    if not match:
++        raise ValueError(f"Invalid duration: {text!r}")
++    multiplier = {"ms": 0.001, "s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
++    return float(match.group(1)) * multiplier
++
++
+ AGY_BIN = os.environ.get("AGY_MC_BIN", os.environ.get("AGY_ORCHESTRATOR_BIN", "agy"))
+ 
+ 
+diff --git a/antigravity_mission_control/jobs.py b/antigravity_mission_control/jobs.py
+index 47a454d..4c15dbd 100644
+--- a/antigravity_mission_control/jobs.py
++++ b/antigravity_mission_control/jobs.py
+@@ -15,7 +15,7 @@ import uuid
+ from pathlib import Path
+ 
+ from .approvals import load_approval, validate_approval_binding
+-from .common import AGY_BIN, STATE_ROOT, atomic_write_json, run_capture, sha256_text, utc_now
++from .common import AGY_BIN, STATE_ROOT, atomic_write_json, parse_duration, run_capture, sha256_text, utc_now
+ from .jobstore import JOB_EXIT_CODES, acquire_workspace_lock, job_lock, job_result, job_result_path, job_spec_path, list_jobs, pid_alive, read_job, refresh_job, release_workspace_lock, start_background_job, write_job, write_terminal_result
+ from .routing import available_models, is_non_high_gemini, select_model
+ from .workspace import canonical_workspace, workspace_delta, workspace_snapshot, workspace_status
+@@ -431,11 +431,10 @@ def cmd_wait(args: argparse.Namespace) -> int:
+     if args.timeout_seconds_override is not None:
+         budget_seconds = args.timeout_seconds_override
+     else:
+-        match = re.fullmatch(r"(\d+(?:\.\d+)?)(ms|s|m|h)", args.timeout)
+-        if not match:
++        try:
++            budget_seconds = parse_duration(args.timeout)
++        except ValueError:
+             raise RuntimeError('Invalid --timeout; use values such as 100s, 5m, or 1h')
+-        multiplier = {"ms": 0.001, "s": 1, "m": 60, "h": 3600}[match.group(2)]
+-        budget_seconds = float(match.group(1)) * multiplier
+     if budget_seconds <= 0:
+         raise RuntimeError("--timeout must be positive")
+     deadline = time.monotonic() + budget_seconds
+diff --git a/tests/test_duration.py b/tests/test_duration.py
+new file mode 100644
+index 0000000..4702b6d
+--- /dev/null
++++ b/tests/test_duration.py
+@@ -0,0 +1,44 @@
++import argparse
++import unittest
++
++from antigravity_mission_control.common import parse_duration
++from antigravity_mission_control.jobs import cmd_wait
++
++
++class ParseDurationTests(unittest.TestCase):
++    def test_valid_units(self):
++        cases = [
++            ("100ms", 0.1),
++            ("1s", 1),
++            ("1.5s", 1.5),
++            ("2m", 120),
++            ("0.5h", 1800),
++            ("1d", 86400),
++        ]
++        for text, seconds in cases:
++            with self.subTest(text=text):
++                self.assertAlmostEqual(parse_duration(text), seconds)
++
++    def test_rejects_malformed_values(self):
++        for text in ["", "10", "10w", "-1s", " 1s", "1s ", "1 s"]:
++            with self.subTest(text=text):
++                with self.assertRaisesRegex(ValueError, "duration") as exc_info:
++                    parse_duration(text)
++                self.assertIn(repr(text), str(exc_info.exception))
++
++    def test_wait_keeps_existing_invalid_timeout_message(self):
++        args = argparse.Namespace(timeout_seconds_override=None, timeout="nonsense")
++        with self.assertRaisesRegex(
++            RuntimeError,
++            "^Invalid --timeout; use values such as 100s, 5m, or 1h$",
++        ):
++            cmd_wait(args)
++
++    def test_wait_rejects_zero_timeout_as_non_positive(self):
++        args = argparse.Namespace(timeout_seconds_override=None, timeout="0s")
++        with self.assertRaisesRegex(RuntimeError, "^--timeout must be positive$"):
++            cmd_wait(args)
++
++
++if __name__ == "__main__":
++    unittest.main()
+-- 
+2.50.1 (Apple Git-155)
+

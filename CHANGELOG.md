@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — 2026-09-23
+- Installable as a Claude Code plugin (`.claude-plugin/`); the skill moved to `skills/colaudex/`. Agent names may carry the `colaudex:` prefix.
+- Combo and tier are chosen in two steps; tier options show only the models the chosen combo uses (`codex_run.py describe`). Execution and review tiers can differ.
+- Plans must use the project's own test runner (a reviewer passed pytest tests that a unittest-only CI would never run).
+- Sandbox-blocked pre-existing tests are PARTIAL, not a reason to widen access.
+- `examples/agy-mission-control`: a full public audit trail of a three-slice run. Project page and README show it; social card `docs/assets/og.png`.
+
 ## 1.1.0 — 2026-09-23
 From the fault-injection simulation (sandbox/sim1: BLOCKED, rework, orchestrator crash) and the paper run (sandbox/paper1: planted bib error).
 - Metrics: Claude runs also write `.result.json`; new `codex_run.py stats` table (tier calibration data).

@@ -7,14 +7,14 @@ description: Claude + Codex plan→execute→review→confirm pipeline. Claude (
 
 You (this session's model) are the **orchestrator**. You write the plan, dispatch executors and reviewers, confirm results, and commit. You do not execute slices yourself. Executors and reviewers never see this conversation; everything they need goes into files.
 
-Skill dir: `~/.claude/skills/colaudex` (below: `$SK`). Codex runner: `python3 $SK/scripts/codex_run.py`.
+Skill dir (below: `$SK`): the base directory shown when this skill loads. That is `~/.claude/skills/colaudex` for a symlink install, or a folder in the plugin cache for a plugin install. Codex runner: `python3 $SK/scripts/codex_run.py`.
 
 ## 0. Setup (once per project)
 
 1. The project must be a git repo with a clean working tree. If it is not a repo, offer to run `git init`. If the tree is dirty, ask the user whether to commit or stash first. Never discard their work.
 2. Create `.colab/` with the subdirectories `tasks/ runs/ reviews/ confirm/`. Add `.colab/` to `.git/info/exclude`, not to `.gitignore`.
 3. If any slice may use Codex, run `codex_run.py preflight`. If it fails, show the `detail` and offer to run every slice with Claude only.
-4. Claude executors and reviewers are the subagents `~/.claude/agents/colaudex-*.md`, which set model and effort in frontmatter. New or edited agent files can take a few minutes to load. If Agent says "Agent type not found", wait briefly and retry, or start a new session. Meanwhile, use `general-purpose` with the config's `model`, prepend the agent file's body to the prompt, and note that effort falls back to the session default.
+4. Claude executors and reviewers are the subagents `colaudex-*` shipped in this repo's `agents/`, which set model and effort in frontmatter. Installed as a plugin, their type names carry the plugin prefix: use `colaudex:<claude.agent>` when the bare name from config is not in your agent list. New or edited agent files can take a few minutes to load. If Agent says "Agent type not found", wait briefly and retry, or start a new session. Meanwhile, use `general-purpose` with the config's `model`, prepend the agent file's body to the prompt, and note that effort falls back to the session default.
 5. Handoffs and review prompts must carry the repo's **absolute path** (`{{REPO}}`), because Claude subagents do not start in the project directory.
 6. If `.colab/STATE.md` already exists, **resume**: read `PLAN.md` and `STATE.md`, run preflight again if Codex slices remain, and continue each slice from its recorded state. Two states need care:
    - **EXECUTING or REVIEWING with no `.result.json` for the current round**: first check that nothing is still running (`pgrep -f "<slice>.r<N>"`). If a run is still alive, wait for it. If it is dead, treat it as an INFRA_FAIL. Set its outputs aside as an aborted attempt (see 2.3). For a Codex executor, read the `thread_id` from the `thread.started` event in the `.jsonl` and retry once with `--resume <thread_id>`; that works in any round. Keep the half-edited working tree; never reset it.
@@ -61,7 +61,7 @@ The tier maps to models through `$SK/config.json`. Paper slices execute with `pa
 - **Codex**: run this with Bash, `run_in_background: true`:
   `python3 $SK/scripts/codex_run.py exec --tier <tier> --kind <kind> --prompt .colab/tasks/<slice>.md --out .colab/runs/<slice>.r<N> --cwd <repo>`
   (For round ≥2, or a retry after a crash, add `--resume <codex_thread>` when the same Codex model executes.) The worker rules are prepended automatically. Save `thread_id` from the result into STATE.
-- **Claude**: call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config. Pass as the prompt the contents of `$SK/templates/worker-rules.md` followed by the contents of the handoff file, and set `run_in_background: true`. Save its final message to `.colab/runs/<slice>.r<N>.last.md`. When it completes, also write `.colab/runs/<slice>.r<N>.result.json` as `{"role":"exec","backend":"claude","tier":…,"model":…,"seconds":<duration_ms/1000>,"tokens":<subagent_tokens>,"status":…}` from the completion's usage block, so `stats` covers Claude runs too.
+- **Claude**: write `$SK/templates/worker-rules.md` followed by the handoff to `.colab/tasks/<slice>.prompt.full.md`, then call Agent with `subagent_type` = the `claude.agent` from config and `model` = the `claude.model` from config, `run_in_background: true`, and a short prompt telling it to read that file in full and follow it as its instructions. Save its final message to `.colab/runs/<slice>.r<N>.last.md`. When it completes, also write `.colab/runs/<slice>.r<N>.result.json` as `{"role":"exec","backend":"claude","tier":…,"model":…,"seconds":<duration_ms/1000>,"tokens":<subagent_tokens>,"status":…}` from the completion's usage block, so `stats` covers Claude runs too.
 
 Wait for the completion notification. Do not poll.
 
