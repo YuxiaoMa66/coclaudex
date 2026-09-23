@@ -45,10 +45,11 @@ flowchart LR
 |---|---|---|---|---|
 | light | luna, medium | sol, medium | sonnet, low | opus, medium |
 | standard | luna, high | sol, medium | sonnet, medium | opus, medium |
-| heavy | sol, medium | astra, medium (×2) | opus, medium | opus, high (×2) |
+| heavy | sol, medium | sol, high (×2) | opus, medium | opus, high (×2) |
+| overkill | astra, medium | astra, medium (×2) | fable, medium | fable, high (×2) |
 | test | luna, low | luna, low | haiku | haiku |
 
-Heavy adds a second reviewer with a different focus. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/colaudex/config.json` to change the mapping.
+Heavy and overkill add a second reviewer with a different focus. Overkill is the only tier that uses gpt-6-astra and Claude Fable; Fable needs usage credits on top of a Claude plan. `test` is for dry runs only. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/colaudex/config.json` to change the mapping.
 
 ## Install
 

@@ -23,7 +23,8 @@ FINDING_KEYS = ("id", "severity", "location", "evidence", "problem", "suggestion
 
 
 def pick(role, tier, kind):
-    paper = role == "exec" and kind == "paper" and tier != "test"  # test tier stays cheap even for paper
+    # Paper prose needs at least paper_exec; heavy already matches it, overkill is stronger, test stays cheap.
+    paper = role == "exec" and kind == "paper" and tier in ("light", "standard")
     m = CFG["paper_exec"]["codex"] if paper else CFG["tiers"][tier][role]["codex"]
     if m["model"] not in CFG["codex"]["allowed_models"]:
         sys.exit(f"model {m['model']} not in allowed_models")
@@ -195,7 +196,7 @@ def cmd_describe(a):
     exec_b, review_b = COMBOS[a.combo]
     out = {}
     for tier, t in CFG["tiers"].items():
-        ex = CFG["paper_exec"] if a.kind == "paper" and tier != "test" else t["exec"]
+        ex = CFG["paper_exec"] if a.kind == "paper" and tier in ("light", "standard") else t["exec"]
         n = 2 if t.get("second_reviewer") else 1
         out[tier] = {"exec": model_label(exec_b, ex[exec_b]),
                      "review": model_label(review_b, t["review"][review_b]) + (f" x{n}" if n > 1 else "")}

@@ -45,10 +45,11 @@ flowchart LR
 |---|---|---|---|---|
 | 轻 light | luna, medium | sol, medium | sonnet, low | opus, medium |
 | 标准 standard | luna, high | sol, medium | sonnet, medium | opus, medium |
-| 重 heavy | sol, medium | astra, medium（两位） | opus, medium | opus, high（两位） |
+| 重 heavy | sol, medium | sol, high（两位） | opus, medium | opus, high（两位） |
+| 疯狂 overkill | astra, medium | astra, medium（两位） | fable, medium | fable, high（两位） |
 | 测试 test | luna, low | luna, low | haiku | haiku |
 
-重档会增加一位侧重点不同的审查者。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/colaudex/config.json` 中修改。
+重档和疯狂档都会增加一位侧重点不同的审查者。只有疯狂档会用到 gpt-6-astra 和 Claude Fable；Fable 需要在 Claude 套餐之外额外购买用量额度。测试档仅用于演练。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/colaudex/config.json` 中修改。
 
 ## 安装
 

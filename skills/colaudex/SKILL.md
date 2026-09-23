@@ -1,6 +1,6 @@
 ---
 name: colaudex
-description: Claude + Codex plan→execute→review→confirm pipeline. Claude (this session) writes the requirements and plan and does the final confirmation. For each slice the user picks A/B/C/D, meaning who executes and who reviews (Claude or Codex), plus a tier (light/standard/heavy). For complex code builds and paper writing. Use when the user says colaudex, asks for Claude and Codex to split execution and review, wants cross-model execution and review, or wants a planned multi-slice build with an independent reviewer.
+description: Claude + Codex plan→execute→review→confirm pipeline. Claude (this session) writes the requirements and plan and does the final confirmation. For each slice the user picks A/B/C/D, meaning who executes and who reviews (Claude or Codex), plus a tier (light/standard/heavy/overkill). For complex code builds and paper writing. Use when the user says colaudex, asks for Claude and Codex to split execution and review, wants cross-model execution and review, or wants a planned multi-slice build with an independent reviewer.
 ---
 
 # colaudex
@@ -45,11 +45,13 @@ Unless a sticky choice from earlier still applies, ask in **two steps**, because
 - **Who does the work?** Labels spell out both roles, for example `C: Codex writes → Claude reviews`. Each description is one line on when this combo fits. Put your recommendation first, marked "(Recommended)". Recommend a cross-model combo: C when the handoff fully specifies the work, B when the slice needs judgment or deep context from the codebase. A and D are same-family: they are cheaper on one side, but the reviewer is less independent.
 - **Apply to**: this slice only / all remaining slices in this phase.
 
-**Step 2: tier**. Run `python3 $SK/scripts/codex_run.py describe --combo <X> --kind <kind>`. Then ask one AskUserQuestion whose four options are the tiers. Each description shows **only the models this combo uses**, taken from that output, plus a few words on cost and depth. For example, for combo C: `standard: Codex gpt-6-luna (high) writes, Claude opus (medium) reviews. The default.` Never list the other backend's models. Mark standard as recommended unless the slice is risky (auth, deleting or migrating data, the core argument of a paper); then recommend heavy and say why in the question.
+**Step 2: tier**. Run `python3 $SK/scripts/codex_run.py describe --combo <X> --kind <kind>`. Then ask one AskUserQuestion whose four options are light, standard, heavy and overkill. `test` is not offered; use it only when the user asks for a cheap dry run. Each description shows **only the models this combo uses**, taken from that output, plus a few words on cost and depth. For example, for combo C: `standard: Codex gpt-6-luna (high) writes, Claude opus (medium) reviews. The default.` Never list the other backend's models. Mark standard as recommended unless the slice is risky (auth, deleting or migrating data, the core argument of a paper); then recommend heavy and say why in the question.
+
+**overkill** runs the strongest models on both sides (Codex gpt-6-astra, Claude Fable) with two reviewers. Never recommend it by default; offer it for the few slices where a miss is very expensive, or when the user asks. Claude Fable needs usage credits on top of a plan, so say "uses Fable (extra usage credits)" in its option. If a Fable agent fails with a credits or access message, stop and ask whether to fall back to heavy's Claude models (opus) or to move that role to Codex; never switch silently.
 
 Execution and review tiers may differ. If the user picks a mix, for example "opus writes, sol reviews" (heavy exec with standard review), record the tier as `exec:heavy/review:standard`, and pass each side its own tier: `--tier heavy` for the executor and `--tier standard` for the reviewer, or the matching Claude agent and model from that tier's config. A heavy second reviewer comes only with a heavy review tier.
 
-The tier maps to models through `$SK/config.json`. Paper slices execute with `paper_exec` whatever tier is chosen, except the `test` tier. Only when the user asks for a cheap test run, use the `test` tier (Codex luna low, Claude haiku).
+The tier maps to models through `$SK/config.json`. Paper slices on light or standard execute with `paper_exec` (sol / opus); heavy already uses those models, overkill uses its own stronger ones, and test stays cheap. Only when the user asks for a cheap test run, use the `test` tier (Codex luna low, Claude haiku).
 
 ### 2.2 Handoff
 
