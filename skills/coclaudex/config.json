@@ -8,7 +8,7 @@
   "tiers": {
     "light": {
       "exec":   {"codex": {"model": "gpt-6-luna", "effort": "medium"}, "claude": {"agent": "coclaudex-exec-sonnet-low", "model": "sonnet"}},
-      "review": {"codex": {"model": "gpt-6-sol", "effort": "medium"}, "claude": {"agent": "coclaudex-review-sonnet-medium", "model": "sonnet"}}
+      "review": {"codex": {"model": "gpt-6-sol", "effort": "low"}, "claude": {"agent": "coclaudex-review-opus-low", "model": "opus"}}
     },
     "standard": {
       "exec":   {"codex": {"model": "gpt-6-luna", "effort": "high"}, "claude": {"agent": "coclaudex-exec-sonnet-medium", "model": "sonnet"}},

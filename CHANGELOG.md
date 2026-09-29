@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 — 2026-09-29
+- Light tier reviews on the stronger model at low effort: Codex gpt-6-sol low, Claude Opus low (new agent `coclaudex-review-opus-low`, replacing 1.4.2's `coclaudex-review-sonnet-medium`). Combo A on light no longer has Sonnet review Sonnet.
+- PLAN.md records the orchestrator's exact model id, and the Finish report starts with it, so a run shows whether it had a strong planner.
+- Project page tier table synced (1.4.2 missed it).
+
 ## 1.4.2 — 2026-09-29
 - Light tier's Claude reviewer is now Sonnet medium (new agent `coclaudex-review-sonnet-medium`), was Opus medium. Codex light review stays sol medium.
 - Correction to 1.4.1: only a Claude reviewer is far cheaper than the executor (about 15–25k input tokens). A Codex reviewer explores the repo and uses as many tokens as the executor (100k–650k, mostly cached). Finish now puts a Codex second reviewer's input tokens next to its b-only VALID findings.

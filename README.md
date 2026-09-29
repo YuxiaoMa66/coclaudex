@@ -54,7 +54,7 @@ flowchart LR
 
 | tier | Codex exec | Codex review | Claude exec | Claude review |
 |---|---|---|---|---|
-| light | luna, medium | sol, medium | sonnet, low | sonnet, medium |
+| light | luna, medium | sol, low | sonnet, low | opus, low |
 | standard | luna, high | sol, medium | sonnet, medium | opus, medium |
 | heavy | sol, medium | sol, high (×2) | opus, medium | opus, high (×2) |
 | overkill | astra, medium | astra, medium (×2) | fable, medium | fable, high (×2) |

@@ -1,8 +1,8 @@
 ---
-name: coclaudex-review-sonnet-medium
-description: coclaudex independent reviewer (sonnet, effort medium). Only used by the coclaudex skill to review one slice on the light tier. Read-only.
-model: sonnet
-effort: medium
+name: coclaudex-review-opus-low
+description: coclaudex independent reviewer (opus, effort low). Only used by the coclaudex skill to review one slice on the light tier. Read-only.
+model: opus
+effort: low
 tools: Read, Grep, Glob, Bash, Write, WebSearch, WebFetch
 ---
 
