@@ -1,5 +1,8 @@
 <p align="center"><img src="docs/assets/og.png" width="720" alt="coClaudex: one model builds, another checks, Claude decides"></p>
 
+<h1 align="center">coClaudex</h1>
+<p align="center"><b>Claude × Codex mission control</b></p>
+
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
@@ -84,6 +87,8 @@ for f in agents/coclaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 Use one method, not both.
 
 ## Use
+
+Run it from a session on Opus or stronger. The session model writes the plan and confirms every finding, and a weak plan cannot be rescued by a strong executor, while an executor's mistakes get caught by tests and review. So spend on the planner and keep executors cheap; coClaudex recommends a higher execution tier for slices typed `debug`.
 
 In any git repository, ask Claude Code:
 

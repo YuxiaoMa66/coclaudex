@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 — 2026-09-29
+Planner-strength findings (PEAR, EACL 2026; COPE, arXiv 2506.11578): a weak planner cannot be offset by a strong executor, the reverse mostly can.
+- Setup warns once when the orchestrating session runs on Sonnet or smaller.
+- Code slices carry a type: `mechanical`, `feature` or `debug`. `debug` and cross-file slices get `exec:heavy/review:standard` recommended.
+- Rework first names the failed layer: a wrong handoff is fixed at the plan and keeps its tier; only executor reasoning shortfalls get an up-tier recommendation.
+- `codex_run.py exec/review --type`, and `stats` shows a type column, so tier defaults can be recalibrated per slice type.
+
 ## 1.3.2 — 2026-09-24
 Lessons from cutting the agy-mission-control 0.6.0 release:
 - Executors never state measured results they did not measure; they leave a `*_PENDING` marker. Finish fills markers from the orchestrator's measurements and recounts stated numbers (a later slice had made "103 tests" stale).

@@ -1,5 +1,8 @@
 <p align="center"><img src="docs/assets/og.png" width="720" alt="coClaudex"></p>
 
+<h1 align="center">coClaudex</h1>
+<p align="center"><b>Claude × Codex mission control</b></p>
+
 <p align="center"><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
@@ -84,6 +87,8 @@ for f in agents/coclaudex-*.md; do ln -s "$PWD/$f" ~/.claude/agents/; done
 两种方式二选一，不要同时使用。
 
 ## 使用
+
+请在 Opus 或更强模型的会话里运行。会话模型负责写计划、确认每条审查意见；计划错了，再强的执行者也救不回来，而执行者的错误会被测试和审查抓到。所以把钱花在规划端，执行端保持便宜；类型为 `debug` 的切片，coClaudex 会推荐更高的执行档位。
 
 在任意 git 仓库里对 Claude Code 说：
 

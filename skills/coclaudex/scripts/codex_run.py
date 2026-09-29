@@ -2,7 +2,7 @@
 """The only way coclaudex calls Codex. Stdlib only.
 
   codex_run.py preflight
-  codex_run.py exec   --tier T [--kind code|paper] --prompt FILE --out PREFIX [--cwd DIR] [--resume THREAD_ID]
+  codex_run.py exec   --tier T [--kind code|paper] [--type mechanical|feature|debug] --prompt FILE --out PREFIX [--cwd DIR] [--resume THREAD_ID]
   codex_run.py review --tier T --prompt FILE --out PREFIX [--cwd DIR]
   codex_run.py validate FILE        # check a review JSON (for example one written by a Claude reviewer)
   codex_run.py stats [COLAB_DIR]    # one row per run from all *.result.json (Codex and Claude)
@@ -130,7 +130,7 @@ def cmd_run(a, role):
     thread_id, usage, errors, denied = parse_events(jsonl)
     msg = Path(last).read_text() if Path(last).exists() else ""
     errtext = Path(err).read_text()
-    r = {"role": role, "backend": "codex", "tier": a.tier, "model": m["model"], "effort": m["effort"], "rc": rc, "seconds": secs,
+    r = {"role": role, "backend": "codex", "tier": a.tier, "type": a.type, "model": m["model"], "effort": m["effort"], "rc": rc, "seconds": secs,
          "thread_id": thread_id, "usage": usage, "sandbox_denied": denied, "errors": errors,
          "error_class": None, "status": None}
     if killed or rc != 0 or not msg.strip():
@@ -171,12 +171,12 @@ def cmd_stats(a):
     for f in sorted(Path(a.dir).glob("*/*.result.json")):
         r = json.loads(f.read_text())
         u = r.get("usage") or {}
-        rows.append([f.name.removesuffix(".result.json"), r.get("role", "?"), r.get("backend", "codex"), r.get("tier", "?"),
+        rows.append([f.name.removesuffix(".result.json"), r.get("type", "-"), r.get("role", "?"), r.get("backend", "codex"), r.get("tier", "?"),
                      f'{r.get("model")}/{r.get("effort", "-")}', r.get("seconds", "?"),
                      u.get("input_tokens", r.get("tokens", "?")), u.get("cached_input_tokens", "-"), u.get("output_tokens", "-"),
                      r.get("error_class") or r.get("status")])
-    rows.sort(key=lambda x: (x[0], x[1] != "exec"))
-    head = ["run", "role", "backend", "tier", "model", "secs", "in_tok", "cached", "out_tok", "outcome"]
+    rows.sort(key=lambda x: (x[0], x[2] != "exec"))
+    head = ["run", "type", "role", "backend", "tier", "model", "secs", "in_tok", "cached", "out_tok", "outcome"]
     print("\t".join(head))
     for row in rows:
         print("\t".join(map(str, row)))
@@ -237,6 +237,7 @@ def main():
         s = sub.add_parser(role)
         s.add_argument("--tier", required=True, choices=list(CFG["tiers"]))
         s.add_argument("--kind", default="code", choices=["code", "paper"])
+        s.add_argument("--type", default="-", choices=["mechanical", "feature", "debug", "-"])
         s.add_argument("--prompt", required=True)
         s.add_argument("--out", required=True)
         s.add_argument("--cwd", default=os.getcwd())
