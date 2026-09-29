@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2 — 2026-09-29
+- Light tier's Claude reviewer is now Sonnet medium (new agent `coclaudex-review-sonnet-medium`), was Opus medium. Codex light review stays sol medium.
+- Correction to 1.4.1: only a Claude reviewer is far cheaper than the executor (about 15–25k input tokens). A Codex reviewer explores the repo and uses as many tokens as the executor (100k–650k, mostly cached). Finish now puts a Codex second reviewer's input tokens next to its b-only VALID findings.
+
 ## 1.4.1 — 2026-09-29
 - Review tiers stay as they are until run data says otherwise: the reviewer is what makes a cheap executor safe, and costs far less than it. Finish now names two candidates to lower when the evidence supports it: the reviewer on light `mechanical` slices (if its VALID findings were all caught by the rerun tests too), and heavy's second reviewer (if it added no VALID finding reviewer a missed).
 

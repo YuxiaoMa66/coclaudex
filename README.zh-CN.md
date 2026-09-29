@@ -54,7 +54,7 @@ flowchart LR
 
 | 档位 | Codex 执行 | Codex 审查 | Claude 执行 | Claude 审查 |
 |---|---|---|---|---|
-| 轻 light | luna, medium | sol, medium | sonnet, low | opus, medium |
+| 轻 light | luna, medium | sol, medium | sonnet, low | sonnet, medium |
 | 标准 standard | luna, high | sol, medium | sonnet, medium | opus, medium |
 | 重 heavy | sol, medium | sol, high（两位） | opus, medium | opus, high（两位） |
 | 疯狂 overkill | astra, medium | astra, medium（两位） | fable, medium | fable, high（两位） |
