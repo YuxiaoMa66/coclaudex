@@ -35,6 +35,16 @@ flowchart LR
 - 审查者也会提出站不住的意见。所以审查结果只是证据，不是结论：Claude 会重跑测试、打开被引用的代码行，把每条意见标记为成立（VALID）或不成立（INVALID）。
 - 所有交接都通过 `.colab/` 里的文件完成。执行者和审查者看不到对话；会话崩溃后可以从 `STATE.md` 接着跑。
 
+### 为什么直接调用 Codex CLI，而不是用 Codex 插件
+
+OpenAI 给 Claude Code 做的 Codex 插件，适合把一件事交给 Codex、拿回它的回答。coClaudex 要把 Codex 当成流水线里的一个角色，每次调用都需要精确控制，所以 `scripts/codex_run.py` 直接运行 `codex exec`：
+
+- 执行者用 `--sandbox workspace-write`，审查者用 `read-only`。
+- 审查结果按 schema 输出 JSON（`--output-schema`），每条意见都能逐条统计和确认。
+- 每次调用都按档位从 `config.json` 固定模型和思考强度。
+- 运行崩溃后按线程 ID 续跑自己那一次（`--resume <thread_id>`），而不只是接上最近一次。
+- 从 `--json` 事件流记录每次运行的耗时和 token（`codex_run.py stats`），卡住时由看门狗停掉。
+
 ## 工作流程
 
 1. **规划。** Claude 写出 `.colab/PLAN.md`：需求，以及若干个约半小时的切片，每个切片都有文件范围、步骤和验收命令。由你批准。

@@ -35,6 +35,16 @@ flowchart LR
 - Reviewers also make claims they cannot back up. So a review is evidence, not a verdict: Claude reruns the tests, opens each quoted line, and marks every finding VALID or INVALID.
 - Everything goes through files in `.colab/`, so executors and reviewers never see the conversation, and a crashed session can resume from `STATE.md`.
 
+### Why it calls the Codex CLI instead of the Codex plugin
+
+OpenAI's Codex plugin for Claude Code is built for handing Codex a task and getting its answer back. coClaudex uses Codex as one role in a pipeline, which needs control over each call, so `scripts/codex_run.py` runs `codex exec` directly:
+
+- Executors run with `--sandbox workspace-write`, reviewers with `read-only`.
+- Reviews come back as JSON checked against a schema (`--output-schema`), so findings can be counted and confirmed one by one.
+- Every call pins the model and reasoning effort for its tier from `config.json`.
+- A crashed run resumes its own Codex thread by id (`--resume <thread_id>`), not just the latest one.
+- The `--json` event stream gives time and tokens per run (`codex_run.py stats`), and a watchdog stops a run that stalls.
+
 ## How it works
 
 1. **Plan.** Claude writes `.colab/PLAN.md`: requirements, then slices of about half an hour each, each with a file scope, steps, and acceptance commands. You approve it.
