@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1 — 2026-09-29
+- Review tiers stay as they are until run data says otherwise: the reviewer is what makes a cheap executor safe, and costs far less than it. Finish now names two candidates to lower when the evidence supports it: the reviewer on light `mechanical` slices (if its VALID findings were all caught by the rerun tests too), and heavy's second reviewer (if it added no VALID finding reviewer a missed).
+
 ## 1.4.0 — 2026-09-29
 Planner-strength findings (PEAR, EACL 2026; COPE, arXiv 2506.11578): a weak planner cannot be offset by a strong executor, the reverse mostly can.
 - Setup warns once when the orchestrating session runs on Sonnet or smaller.
