@@ -41,7 +41,7 @@ OpenAI 给 Claude Code 做的 Codex 插件，适合把一件事交给 Codex、�
 
 - 执行者用 `--sandbox workspace-write`，审查者用 `read-only`。
 - 审查结果按 schema 输出 JSON（`--output-schema`），每条意见都能逐条统计和确认。
-- 每次调用都按档位从 `config.json` 固定模型和思考强度。
+- 每次调用都按档位从 `config.json` 指定模型和思考强度；Codex 列出同系列的新型号时，自动改用最新的。
 - 运行崩溃后按线程 ID 续跑自己那一次（`--resume <thread_id>`），而不只是接上最近一次。
 - 从 `--json` 事件流记录每次运行的耗时和 token（`codex_run.py stats`），卡住时由看门狗停掉。
 

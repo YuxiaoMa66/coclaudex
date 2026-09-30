@@ -41,7 +41,7 @@ OpenAI's Codex plugin for Claude Code is built for handing Codex a task and gett
 
 - Executors run with `--sandbox workspace-write`, reviewers with `read-only`.
 - Reviews come back as JSON checked against a schema (`--output-schema`), so findings can be counted and confirmed one by one.
-- Every call pins the model and reasoning effort for its tier from `config.json`.
+- Every call sets the model and reasoning effort for its tier from `config.json`, and moves to the newest model of the same family when Codex lists one.
 - A crashed run resumes its own Codex thread by id (`--resume <thread_id>`), not just the latest one.
 - The `--json` event stream gives time and tokens per run (`codex_run.py stats`), and a watchdog stops a run that stalls.
 
