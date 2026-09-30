@@ -55,7 +55,7 @@ Unless a sticky choice from earlier still applies, ask in **two steps**, because
 
 Execution and review tiers may differ. If the user picks a mix, for example "opus writes, sol reviews" (heavy exec with standard review), record the tier as `exec:heavy/review:standard`, and pass each side its own tier: `--tier heavy` for the executor and `--tier standard` for the reviewer, or the matching Claude agent and model from that tier's config. A heavy second reviewer comes only with a heavy review tier.
 
-The tier maps to models through `$SK/config.json`. Paper slices on light or standard execute with `paper_exec` (sol / opus); heavy already uses those models, overkill uses its own stronger ones, and test stays cheap. Only when the user asks for a cheap test run, use the `test` tier (Codex luna low, Claude haiku).
+The tier maps to models through `$SK/config.json`. With `codex.auto_latest` on (the default), a Codex model named there is the floor: the script runs the newest listed `gpt-<version>-<family>` of the same family (luna, sol, astra) from Codex's own model list, and falls back to the config name when nothing newer is listed. `describe` and each `result.json` show the model actually used, so quote those, not the config. Paper slices on light or standard execute with `paper_exec` (sol / opus); heavy already uses those models, overkill uses its own stronger ones, and test stays cheap. Only when the user asks for a cheap test run, use the `test` tier (Codex luna low, Claude haiku).
 
 ### 2.2 Handoff
 
@@ -122,6 +122,6 @@ When every slice is ACCEPTED (or the user has decided on the escalated ones), ru
 
 - Run slices **sequentially** in the main working tree. (Deliberate limit: no parallel slices or worktrees yet. Add them once Codex rate limits for long tasks are measured, capped at 2 concurrent Codex executors.)
 - Only the orchestrator commits. Never push unless the user asks.
-- Never pass a model to Codex outside config's `allowed_models`. Never use `chatgpt-web/*` models.
+- Never pass a model to Codex outside config's `allowed_models` (or the newer same-family model the script resolves from them). Never use `chatgpt-web/*` models.
 - Do not edit `~/.codex/config.toml`. All overrides go through `codex_run.py` flags.
 - Global Codex hooks or AGENTS.md style rules (for example a "write minimal code" rule) can make executors skip running tests. The worker rules override them, and you re-run the tests at confirmation anyway.

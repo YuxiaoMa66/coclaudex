@@ -2,6 +2,7 @@
   "max_rounds": 2,
   "codex": {
     "allowed_models": ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"],
+    "auto_latest": true,
     "stale_seconds": 600,
     "max_seconds": 3600
   },

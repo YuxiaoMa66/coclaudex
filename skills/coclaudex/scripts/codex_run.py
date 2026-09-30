@@ -22,13 +22,30 @@ SEVERITIES = {"blocker", "major", "minor", "nit"}
 FINDING_KEYS = ("id", "severity", "location", "evidence", "problem", "suggestion")
 
 
+def latest(slug):
+    """Newest listed gpt-<version>-<family> of the same family in Codex's model cache.
+    Returns the config slug itself when auto_latest is off, the cache is unreadable, or nothing newer is listed."""
+    pinned = re.fullmatch(r"gpt-(\d+(?:\.\d+)*)-(\w+)", slug)
+    if not pinned or not CFG["codex"].get("auto_latest"):
+        return slug
+    ver = lambda s: tuple(map(int, s.split(".")))
+    try:
+        cache = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / "models_cache.json"
+        slugs = [x["slug"] for x in json.loads(cache.read_text())["models"] if x.get("visibility") == "list"]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return slug
+    found = [f for f in (re.fullmatch(rf"gpt-(\d+(?:\.\d+)*)-{pinned[2]}", s) for s in slugs if isinstance(s, str)) if f]
+    best = max(found, key=lambda f: ver(f[1]), default=None)
+    return best[0] if best and ver(best[1]) > ver(pinned[1]) else slug
+
+
 def pick(role, tier, kind):
     # Paper prose needs at least paper_exec; heavy already matches it, overkill is stronger, test stays cheap.
     paper = role == "exec" and kind == "paper" and tier in ("light", "standard")
     m = CFG["paper_exec"]["codex"] if paper else CFG["tiers"][tier][role]["codex"]
     if m["model"] not in CFG["codex"]["allowed_models"]:
         sys.exit(f"model {m['model']} not in allowed_models")
-    return m
+    return {**m, "model": latest(m["model"])}
 
 
 def build_cmd(role, m, cwd, last, resume, kind="code"):
@@ -188,7 +205,7 @@ COMBOS = {"A": ("claude", "claude"), "B": ("claude", "codex"), "C": ("codex", "c
 
 def model_label(backend, m):
     if backend == "codex":
-        return f"Codex {m['model']} ({m['effort']})"
+        return f"Codex {latest(m['model'])} ({m['effort']})"
     return f"Claude {m['model']} ({m['agent'].rsplit('-', 1)[1]})"  # effort lives in the agent name
 
 
@@ -210,7 +227,7 @@ def cmd_preflight(_):
     except (OSError, subprocess.TimeoutExpired) as e:
         print(json.dumps({"ok": False, "detail": f"codex not runnable: {e}"}))
         return 1
-    cmd = ["codex", "exec", "-m", "gpt-6-luna", "-c", 'model_reasoning_effort="low"', "-c", 'approval_policy="never"',
+    cmd = ["codex", "exec", "-m", latest("gpt-6-luna"), "-c", 'model_reasoning_effort="low"', "-c", 'approval_policy="never"',
            "--sandbox", "read-only", "--disable", "multi_agent", "--disable", "memories", "--skip-git-repo-check", "--json", "-"]
     try:
         p = subprocess.run(cmd, input="reply OK", capture_output=True, text=True, timeout=180)

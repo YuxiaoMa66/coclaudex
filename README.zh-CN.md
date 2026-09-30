@@ -70,7 +70,7 @@ OpenAI 给 Claude Code 做的 Codex 插件，适合把一件事交给 Codex、�
 | 疯狂 overkill | astra, medium | astra, medium（两位） | fable, medium | fable, high（两位） |
 | 测试 test | luna, low | luna, low | haiku | haiku |
 
-重档和疯狂档都会增加一位侧重点不同的审查者。只有疯狂档会用到 gpt-6-astra 和 Claude Fable；Fable 需要在 Claude 套餐之外额外购买用量额度。测试档仅用于演练。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/coclaudex/config.json` 中修改。
+重档和疯狂档都会增加一位侧重点不同的审查者。只有疯狂档会用到 gpt-6-astra 和 Claude Fable；Fable 需要在 Claude 套餐之外额外购买用量额度。测试档仅用于演练。执行和审查可以选不同的档位（比如 opus 写、sol 审）。论文切片除测试档外，一律用更强的固定模型执行。映射关系可在 `skills/coclaudex/config.json` 中修改。Codex 模型会自动跟进新版本：Codex 的模型列表里出现同一系列（luna、sol、astra）更新的 `gpt-<版本>` 型号时，就改用新的。把 `codex.auto_latest` 设为 `false` 可以固定为配置里写的型号。
 
 ## 安装
 

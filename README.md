@@ -70,7 +70,7 @@ OpenAI's Codex plugin for Claude Code is built for handing Codex a task and gett
 | overkill | astra, medium | astra, medium (×2) | fable, medium | fable, high (×2) |
 | test | luna, low | luna, low | haiku | haiku |
 
-Heavy and overkill add a second reviewer with a different focus. Overkill is the only tier that uses gpt-6-astra and Claude Fable; Fable needs usage credits on top of a Claude plan. `test` is for dry runs only. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/coclaudex/config.json` to change the mapping.
+Heavy and overkill add a second reviewer with a different focus. Overkill is the only tier that uses gpt-6-astra and Claude Fable; Fable needs usage credits on top of a Claude plan. `test` is for dry runs only. Execution and review can use different tiers (for example opus writes, sol reviews). Paper slices execute with a stronger fixed model on every tier except `test`. Edit `skills/coclaudex/config.json` to change the mapping. Codex models follow new releases on their own: when Codex lists a newer `gpt-<version>` model of the same family (luna, sol, astra), that one runs instead. Set `codex.auto_latest` to `false` to pin the exact names.
 
 ## Install
 

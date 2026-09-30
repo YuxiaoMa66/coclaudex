@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.4 — 2026-09-30
+- Codex models follow new releases: with `codex.auto_latest` on (the default), each config model resolves to the newest listed `gpt-<version>-<family>` of the same family in Codex's model cache (`$CODEX_HOME/models_cache.json`). The config name is the fallback when the cache is unreadable or lists nothing newer. `describe`, preflight and `result.json` use the resolved model. Set `auto_latest` to `false` to pin.
+
 ## 1.4.3 — 2026-09-29
 - Light tier reviews on the stronger model at low effort: Codex gpt-6-sol low, Claude Opus low (new agent `coclaudex-review-opus-low`, replacing 1.4.2's `coclaudex-review-sonnet-medium`). Combo A on light no longer has Sonnet review Sonnet.
 - PLAN.md records the orchestrator's exact model id, and the Finish report starts with it, so a run shows whether it had a strong planner.
