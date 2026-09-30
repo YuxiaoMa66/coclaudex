@@ -329,7 +329,7 @@ footer .wrap { display: flex; gap: 24px; justify-content: space-between; flex-wr
         </tbody>
       </table>
     </div>
-    <p class="note"><span class="en">Execution and review can sit on different tiers, for example opus writes and sol reviews. Paper slices execute with a fixed stronger model on every tier except test.</span><span class="zh">执行和审查可以选不同档位，比如 opus 写、sol 审。论文切片除测试档外，一律用更强的固定模型执行。</span></p>
+    <p class="note"><span class="en">Execution and review can sit on different tiers, for example opus writes and sol reviews. Paper slices execute with a fixed stronger model on every tier except test. Codex models follow new releases: when Codex lists a newer model of the same family (luna, sol, astra), that one runs instead. Set <code>codex.auto_latest</code> to <code>false</code> in config.json to pin the exact names.</span><span class="zh">执行和审查可以选不同档位，比如 opus 写、sol 审。论文切片除测试档外，一律用更强的固定模型执行。Codex 模型会自动跟进新版本：Codex 的模型列表里出现同一系列（luna、sol、astra）更新的型号时，就改用新的。在 config.json 里把 <code>codex.auto_latest</code> 设为 <code>false</code> 可以固定型号。</span></p>
   </div>
 </section>
 
